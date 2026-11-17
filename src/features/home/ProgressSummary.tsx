@@ -1,17 +1,19 @@
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Fragment } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import {
   AppCard,
-  EmptyState,
+  Button,
   ErrorState,
   Icon,
+  ListDivider,
   LoadingState,
   SectionHeader,
 } from '@/components';
 import { useTheme } from '@/context';
 import type { RecordsOverview } from '@/utils';
-import { formatDisplayDate, formatWeightReps } from '@/utils/records';
+import { formatWeightReps } from '@/utils/records';
 
 interface ProgressSummaryProps {
   overview: RecordsOverview;
@@ -21,89 +23,110 @@ interface ProgressSummaryProps {
 }
 
 /**
- * Dashboard "Twoje postępy": only data that really exists on the device.
- * Body-weight logging is not implemented yet, so it is labelled as such.
+ * Dashboard "Twoje postępy": body weight card + recent PRs card.
+ * Only data that really exists on the device is shown; body-weight logging
+ * is not implemented yet, so that card says so instead of showing a chart.
  */
 export function ProgressSummary({ overview, isLoading, error, onRetry }: ProgressSummaryProps) {
   const { colors } = useTheme();
-  const latest = overview.recentPrs[0];
+  const recent = overview.recentPrs;
 
   return (
     <View>
-      <SectionHeader
-        title="Twoje postępy"
-        actionLabel="Szczegóły"
-        onActionPress={() => router.push('/progress')}
-      />
+      <SectionHeader title="Twoje postępy" />
 
       <View className="gap-3">
         {error ? (
           <ErrorState message={error} actionLabel="Spróbuj ponownie" onActionPress={onRetry} />
         ) : null}
 
-        {isLoading ? (
-          <AppCard>
-            <LoadingState label="Wczytywanie dziennika…" />
-          </AppCard>
-        ) : latest ? (
-          <AppCard
-            onPress={() =>
-              router.push({
-                pathname: '/tools/records/[exerciseKey]',
-                params: { exerciseKey: latest.exerciseKey },
-              })
-            }
-            accessibilityLabel={`Ostatni rekord: ${latest.exerciseName}, ${formatWeightReps(
-              latest.weightKg,
-              latest.reps,
-            )}`}
-            accessibilityHint="Otwiera historię ćwiczenia"
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-accent/15">
-                <Icon name="trophy" color={colors.accent} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-label text-text-secondary">Ostatni rekord</Text>
-                <Text className="text-card-title text-text-primary" numberOfLines={2}>
-                  {latest.exerciseName}
-                </Text>
-                <Text className="mt-0.5 text-label text-text-secondary">
-                  {formatWeightReps(latest.weightKg, latest.reps)} ·{' '}
-                  {formatDisplayDate(latest.date)}
-                </Text>
-              </View>
-              <Icon name="chevronRight" size="sm" color={colors.textMuted} />
-            </View>
-            <View className="mt-3 flex-row gap-4 border-t border-border pt-3">
-              <Text className="text-label text-text-secondary">
-                Ćwiczenia: <Text className="font-semibold text-text-primary">{overview.exerciseCount}</Text>
-              </Text>
-              <Text className="text-label text-text-secondary">
-                Wpisy: <Text className="font-semibold text-text-primary">{overview.entryCount}</Text>
-              </Text>
-            </View>
-          </AppCard>
-        ) : (
-          <EmptyState
-            icon="trophy"
-            title="Brak zapisanych rekordów"
-            description="Zapisz wynik w dzienniku PR, a tutaj pojawi się Twój ostatni rekord."
-            actionLabel="Dodaj pierwszy wynik"
-            onActionPress={() => router.push('/tools/records/form')}
-          />
-        )}
-
-        <AppCard variant="outline">
-          <View className="flex-row items-center gap-3">
-            <Icon name="scale" color={colors.textMuted} />
+        <AppCard>
+          <View className="flex-row items-start gap-3">
             <View className="flex-1">
-              <Text className="text-body font-medium text-text-primary">Masa ciała</Text>
-              <Text className="text-label text-text-secondary">
-                Zapisywanie pomiarów pojawi się w kolejnej wersji.
-              </Text>
+              <Text className="text-body text-text-secondary">Masa ciała</Text>
+              <Text className="mt-0.5 text-title text-text-muted">— kg</Text>
+            </View>
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-elevated">
+              <Icon name="scale" size="sm" color={colors.textMuted} />
             </View>
           </View>
+          <Text className="mt-2 text-label text-text-secondary">
+            Zapisywanie pomiarów i wykres trendu pojawią się w kolejnej wersji.
+          </Text>
+        </AppCard>
+
+        <AppCard padding="none" className="overflow-hidden">
+          <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
+            <Text className="text-card-title text-text-primary">Ostatnie rekordy</Text>
+            {recent.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/tools/records')}
+                hitSlop={12}
+                className="min-h-[32px] flex-row items-center gap-1 active:opacity-60"
+              >
+                <Text className="text-label font-semibold text-accent">Zobacz wszystkie</Text>
+                <Icon name="chevronRight" size={16} color={colors.accent} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {isLoading ? (
+            <LoadingState label="Wczytywanie dziennika…" />
+          ) : recent.length === 0 ? (
+            <View className="gap-3 px-4 pb-4">
+              <Text className="text-body text-text-secondary">
+                Zapisz wynik w dzienniku PR, a tutaj pojawią się Twoje rekordy.
+              </Text>
+              <Button
+                label="Dodaj pierwszy wynik"
+                variant="secondary"
+                size="sm"
+                icon="plus"
+                fullWidth={false}
+                onPress={() => router.push('/tools/records/form')}
+              />
+            </View>
+          ) : (
+            <View className="pb-1">
+              {recent.map((entry, index) => {
+                const summary = formatWeightReps(entry.weightKg, entry.reps);
+                return (
+                  <Fragment key={entry.id}>
+                    {index > 0 ? <ListDivider /> : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${entry.exerciseName}, ${summary}`}
+                      accessibilityHint="Otwiera historię ćwiczenia"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/tools/records/[exerciseKey]',
+                          params: { exerciseKey: entry.exerciseKey },
+                        })
+                      }
+                      className="min-h-[60px] flex-row items-center gap-3 px-4 py-2.5 active:bg-surface-elevated"
+                    >
+                      <View className="h-10 w-10 items-center justify-center rounded-sm bg-surface-elevated">
+                        <Icon name="dumbbell" size="sm" color={colors.textSecondary} />
+                      </View>
+                      <Text
+                        className="flex-1 text-body font-semibold text-text-primary"
+                        numberOfLines={2}
+                      >
+                        {entry.exerciseName}
+                      </Text>
+                      <Text
+                        className="text-body font-semibold text-text-primary"
+                        style={{ fontVariant: ['tabular-nums'] }}
+                      >
+                        {summary}
+                      </Text>
+                    </Pressable>
+                  </Fragment>
+                );
+              })}
+            </View>
+          )}
         </AppCard>
       </View>
     </View>

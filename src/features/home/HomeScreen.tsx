@@ -31,7 +31,7 @@ function formatToday(date: Date): string {
 
 export function HomeScreen() {
   const { records, isLoading, error, reloadRecords } = useRecords();
-  const overview = useMemo(() => buildRecordsOverview(records, 1), [records]);
+  const overview = useMemo(() => buildRecordsOverview(records, 3), [records]);
   const now = new Date();
 
   return (

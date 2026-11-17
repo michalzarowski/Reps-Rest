@@ -30,7 +30,7 @@ export function QuickTools() {
             >
               <Icon name={tool.icon} color={colors.accent} />
               <Text
-                className="text-label font-semibold text-text-primary"
+                className="text-body font-medium text-text-primary"
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.85}

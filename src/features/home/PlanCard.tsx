@@ -1,7 +1,8 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { AppCard, Button, Icon } from '@/components';
+import { Button, Icon } from '@/components';
 import { useTheme } from '@/context';
 import type { WorkoutPlan } from '@/types';
 
@@ -20,56 +21,65 @@ function exerciseCountLabel(count: number): string {
   return `${count} ćwiczeń`;
 }
 
-/** Compact horizontal card for the user's training plan (or its empty state). */
+/**
+ * Horizontal plan card: eyebrow, title, meta, one CTA. A soft accent wash and a
+ * large outline icon on the right replace a photo (no stock imagery in assets).
+ */
 export function PlanCard({ plan }: PlanCardProps) {
   const { colors } = useTheme();
 
   return (
-    <AppCard variant="elevated">
-      <View className="flex-row items-start gap-3">
-        <View className="h-12 w-12 items-center justify-center rounded-md bg-accent/15">
-          <Icon name="clipboardList" color={colors.accent} />
-        </View>
-        <View className="flex-1">
-          {plan ? (
-            <>
-              <Text className="text-label text-text-secondary">Twój plan</Text>
-              <Text className="mt-0.5 text-card-title text-text-primary" numberOfLines={2}>
-                {plan.name}
-              </Text>
-              <Text className="mt-1 text-label text-text-secondary">
-                {exerciseCountLabel(plan.items.length)}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text className="text-card-title text-text-primary">
-                Nie masz jeszcze planu
-              </Text>
-              <Text className="mt-1 text-body text-text-secondary">
-                Tworzenie własnych planów jest w przygotowaniu. Na razie możesz
-                przejrzeć przykładowe programy.
-              </Text>
-            </>
-          )}
-        </View>
+    <View className="overflow-hidden rounded-lg border border-border bg-surface">
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', colors.accentSoft]}
+        start={{ x: 0.35, y: 0.2 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View
+        pointerEvents="none"
+        className="absolute -right-3 top-1/2 -mt-12 opacity-20"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Icon name="dumbbell" size={96} color={colors.accent} />
       </View>
-      <View className="mt-4">
+
+      <View className="p-5 pr-24">
+        <Text className="text-label font-semibold uppercase tracking-wider text-accent">
+          {plan ? 'Twój plan' : 'Plan treningowy'}
+        </Text>
         {plan ? (
+          <>
+            <Text className="mt-1 text-title text-text-primary" numberOfLines={2}>
+              {plan.name}
+            </Text>
+            <Text className="mt-1 text-body text-text-secondary">
+              {exerciseCountLabel(plan.items.length)}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text className="mt-1 text-title text-text-primary">Nie masz jeszcze planu</Text>
+            <Text className="mt-1 text-body text-text-secondary">
+              Kreator planów jest w przygotowaniu. Zobacz przykładowe programy.
+            </Text>
+          </>
+        )}
+        <View className="mt-4">
           <Button
-            label="Zobacz plan"
+            label={plan ? 'Zobacz plan' : 'Przeglądaj programy'}
+            size="sm"
+            fullWidth={false}
             onPress={() =>
-              router.push({ pathname: '/plans/[id]', params: { id: plan.id } })
+              plan
+                ? router.push({ pathname: '/plans/[id]', params: { id: plan.id } })
+                : router.push('/plans')
             }
           />
-        ) : (
-          <Button
-            label="Przeglądaj programy"
-            variant="secondary"
-            onPress={() => router.push('/plans')}
-          />
-        )}
+        </View>
       </View>
-    </AppCard>
+    </View>
   );
 }
