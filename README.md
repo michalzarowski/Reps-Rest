@@ -132,27 +132,41 @@ Funkcje takie jak logowanie, synchronizacja w chmurze, społeczność, powiadomi
 
 ## 5. Architektura i organizacja kodu
 
-Proponowany podział katalogów (może zostać dostosowany do struktury utworzonej przez Expo):
+Routing Expo Router jest w `app/` (cienkie trasy). Logika i UI modułów żyją w `src/`. Alias importów: `@/*` → `src/*`.
 
 ```text
+app/                              # wyłącznie nawigacja (Expo Router)
+  (tabs)/
+    index.tsx                     # Home
+    tools/                        # Stack: hub + 1RM / timer / talerze / rekordy
+    plans.tsx
+    progress.tsx
 src/
-  components/       # współdzielone elementy UI
-  screens/          # ekrany aplikacji
+  components/ui/                  # współdzielone elementy UI
   features/
-    one-rm/         # formularz, wynik i logika kalkulatora
-    interval-timer/ # timer, ustawienia i presety
+    home/
+    tools/
+    one-rm/
+    interval-timer/
     plate-calculator/
-    records/        # dziennik PR
-    body-progress/  # pomiary i BMI
-    workout-plans/  # plany i katalog ćwiczeń
-  context/          # współdzielony stan, jeśli jest potrzebny
-  hooks/            # własne hooki
+    records/
+    progress/
+    workout-plans/
+  context/                        # AppProviders, SettingsProvider
+  hooks/
   services/
-    exercise-api/   # klient API wger
-    storage/        # odczyt i zapis danych lokalnych
-  utils/            # formuły i funkcje bez zależności od UI
-  types/            # modele TypeScript
+    api/                          # klient HTTP + stub wger (bez auto-fetch)
+    storage/                      # AsyncStorage + schemaVersion
+  constants/
+  theme/                          # Aquatic Liquid Glass tokens + navigationTheme
+  mocks/                          # dane demo do makiet wizualnych
+  utils/
+  types/
 ```
+
+**System wizualny:** Aquatic Liquid Glass (ciemny motyw premium). Tokeny w `src/theme/tokens.ts` — Deep Water / Sea Depth, Aqua (główny akcent interakcji), Liquid Mint, Lilac. Komponenty w `src/components/ui/`. Makiety: Home (powitanie + hero + quick tools), Tools, Plans (filtry + szczegóły `/plans/[id]`), Progress, Profile (`/profile`), placeholdery UI narzędzi. NativeWind = layout; `expo-blur` / `expo-linear-gradient` / `expo-image` = efekty. Ikony: Lucide przez `Icon`.
+
+Szczegółowe konwencje dla agentów i dalszej pracy: zob. `AGENTS.md`.
 
 ### Zasady implementacji
 
@@ -170,7 +184,7 @@ src/
 | `Exercise` | `id`, `name`, `muscleGroups`, `equipment`, `source`, `isCustom` |
 | `WorkoutPlan` | `id`, `name`, `createdAt`, `updatedAt`, `items[]` |
 | `WorkoutPlanItem` | `exerciseId`, `order`, `sets`, `repMin`, `repMax`, `restSeconds`, `notes` |
-| `PersonalRecord` | `id`, `exerciseId`, `weightKg`, `reps`, `date`, `notes` |
+| `PersonalRecord` | `id`, `exerciseName`, `exerciseKey`, `exerciseId?`, `weightKg`, `reps`, `date`, `notes?`, `createdAt`, `updatedAt` |
 | `BodyWeightEntry` | `id`, `date`, `weightKg` |
 | `TimerPreset` | `id`, `name`, `rounds`, `workSeconds`, `restSeconds`, `warmupSeconds` |
 | `UserSettings` | `heightCm`, `preferredUnit`, `availablePlatesKg`, `theme` |
@@ -179,13 +193,19 @@ Wewnętrznie warto przechowywać masy w jednej jednostce (np. kg), a dopiero prz
 
 ## 6. Proponowane ekrany
 
-1. **Strona główna:** kafelki skrótów do najczęściej używanych modułów.
-2. **Kalkulatory:** zakładki lub osobne ekrany 1RM i obciążeń na sztangę.
-3. **Timer:** duży licznik, faza/runda, podstawowe sterowanie i wybór presetu.
-4. **Rekordy:** lista rekordów, formularz dodawania i szczegóły ćwiczenia.
-5. **Postępy:** historia masy ciała, wykres i BMI.
-6. **Plany:** lista planów, edytor planu oraz przegląd katalogu ćwiczeń.
-7. **Ustawienia:** jednostki, wzrost, dostępne talerze i preferencje UI.
+Aktualny szkielet nawigacji (działa):
+
+1. **Home** — skróty do Narzędzi, Planów i Postępów.
+2. **Narzędzia** — hub z trasami do 1RM, timera, konwertera talerzy i dziennika PR.
+3. **Plany** — placeholder kreatora planów / katalogu ćwiczeń.
+4. **Postępy** — placeholder śledzenia masy ciała i BMI.
+
+Docelowa zawartość ekranów (do implementacji etapami):
+
+- **1RM / talerze / timer / rekordy** — pełna logika w `src/features/*` (spotkania 2–3 ✅).
+- **Postępy** — historia masy ciała, wykres i BMI.
+- **Plany** — lista planów, edytor, katalog wger + ćwiczenia własne.
+- **Ustawienia** — jednostki, wzrost, talerze (provider już istnieje; ekran UI później).
 
 ## 7. Harmonogram — 5 spotkań
 
@@ -193,11 +213,54 @@ Plan zakłada pięć spotkań roboczych, każde około 90–120 minut. Między s
 
 | Spotkanie | Zakres prac | Rezultat / kryterium zakończenia |
 |---|---|---|
-| **1. Fundamenty i szkielet aplikacji** | Doprecyzowanie MVP; utworzenie projektu Expo + TypeScript; konfiguracja NativeWind; podstawowa nawigacja; motyw i komponenty bazowe; struktura katalogów; konfiguracja Git. | Aplikacja uruchamia się na urządzeniu/emulatorze, ma działające przejścia między pustymi ekranami modułów, a repozytorium zawiera pierwszą działającą wersję. |
-| **2. Kalkulatory i logika domenowa** | Implementacja kalkulatora 1RM (Epley/Brzycki), walidacja; konwerter obciążeń z masą gryfu i talerzami na jedną stronę; proste testy funkcji obliczeniowych; dopracowanie formularzy. | Kalkulatory poprawnie liczą typowe przypadki, odrzucają nieprawidłowe dane i pokazują czytelne komunikaty. |
-| **3. Timer i dziennik PR** | Timer z rundami/przerwami, start/pauza/reset i presetami; dziennik rekordów; zapis i odczyt lokalny; obsługa błędów zapisu oraz ponownego uruchomienia aplikacji. | Ustawiony timer działa zgodnie z parametrami, a dodane rekordy zostają zachowane po zamknięciu i ponownym uruchomieniu aplikacji. |
+| **1. Fundamenty i szkielet aplikacji** ✅ | Doprecyzowanie MVP; utworzenie projektu Expo + TypeScript; konfiguracja NativeWind; podstawowa nawigacja; motyw i komponenty bazowe; struktura katalogów; konfiguracja Git. | Aplikacja uruchamia się na urządzeniu/emulatorze, ma działające przejścia między pustymi ekranami modułów, a repozytorium zawiera pierwszą działającą wersję. |
+| **2. Kalkulatory i logika domenowa** ✅ | Implementacja kalkulatora 1RM (Epley/Brzycki), walidacja; konwerter obciążeń z masą gryfu i talerzami na jedną stronę; proste testy funkcji obliczeniowych; dopracowanie formularzy. | Kalkulatory poprawnie liczą typowe przypadki, odrzucają nieprawidłowe dane i pokazują czytelne komunikaty. |
+| **3. Timer i dziennik PR** ✅ | Timer z rundami/przerwami, start/pauza/reset i presetami; dziennik rekordów; zapis i odczyt lokalny; obsługa błędów zapisu oraz ponownego uruchomienia aplikacji. | Ustawiony timer działa zgodnie z parametrami, a dodane rekordy zostają zachowane po zamknięciu i ponownym uruchomieniu aplikacji. |
 | **4. Kreator planów i katalog ćwiczeń** | Modele `Exercise` i `WorkoutPlan`; tworzenie/edycja planu; dodawanie ćwiczeń; integracja wger; stany ładowania, pustego wyniku i błędu sieci; możliwość dodania ćwiczenia własnego. | Użytkownik tworzy i zapisuje plan z ćwiczeniami z katalogu lub własnymi. Podstawowe plany są dostępne także bez internetu po wcześniejszym zapisaniu. |
 | **5. Postępy, testy i prezentacja** | Historia masy ciała, BMI i wykres; testy manualne całej aplikacji; poprawki UI; pusty stan i komunikaty błędów; finalne README i przygotowanie demonstracji. Jeśli zostanie czas: eksport CSV. | Wszystkie funkcje bazowe są możliwe do zademonstrowania, dane zachowują się poprawnie, a repozytorium zawiera opis uruchomienia i ograniczeń. |
+
+### Status spotkania 2 (kalkulatory)
+
+Ukończone:
+
+- **Kalkulator 1RM** — wzory Epleya i Brzyckiego, walidacja ciężaru/powtórzeń (w tym limit Brzyckiego ≤ 36), ostrzeżenie poza zakresem 1–10, tabela intensywności oraz prosty wykres słupkowy (`react-native-svg`).
+- **Konwerter talerzy** — tryb cel → talerze oraz talerze → cel; gryf 20/15 kg lub własny; DP z minimalną liczbą talerzy; komunikat + najbliższe obciążenia przy braku dokładnego dopasowania; wizualizacja rękawa sztangi.
+- **Testy jednostkowe** — Vitest dla `src/utils/oneRm.ts` i `src/utils/plates.ts` (`npm test`).
+
+Ograniczenia MVP na tym etapie: brak magazynu sprzętu (nieskończona liczba talerzy każdego rozmiaru), brak własnej listy talerzy w ustawieniach UI.
+
+### Status spotkania 3A (timer interwałowy)
+
+Ukończone:
+
+- **Silnik timera** — `src/utils/timerEngine.ts`: fazy na osi czasu, `Date.now()` / wstrzykiwany zegar, pauza z zamrożonym elapsed, bez dryfu `setInterval`.
+- **UI** — konfiguracja, aktywna sesja z pierścieniem SVG, podsumowanie końca; Start / Pause / Resume / Reset / Restart.
+- **Presety** — Boxing, Tabata, Calisthenics, Strength (wbudowane, tylko do odczytu) + własne CRUD w AsyncStorage (`storageKeys.timerPresets`).
+- **Sygnały** — `expo-haptics` + `Vibration` przy zmianie fazy i opcjonalnym odliczaniu 3–2–1 (tylko na pierwszym planie).
+- **Testy** — Vitest: silnik, cue logic, presety (łącznie z kalkulatorami: `npm test`).
+
+Ograniczenia 3A:
+
+- Brak gwarantowanych alarmów przy zablokowanym ekranie / zabitym procesie (JS w tle nie jest wiarygodny).
+- Wznawianie sesji po killu procesu nie jest częścią MVP.
+
+### Status spotkania 3B (dziennik rekordów PR)
+
+Ukończone:
+
+- **Model i logika** — `PersonalRecord` z `exerciseName` / `exerciseKey`, walidacja formularza (w tym przecinek dziesiętny), grupowanie, sortowanie chronologiczne.
+- **Wykrywanie PR** — rekord liczony osobno dla danej liczby powtórzeń; oznaczenia bieżącego PR, remisu i historycznego PR wyliczane z historii (bez trwałej flagi `isPR`).
+- **Szac. 1RM** — faktyczny ciężar przy 1 powtórzeniu albo estymacja Epleya dla 2–10 powtórzeń; poza zakresem bez mylącej estymacji.
+- **UI** — lista ćwiczeń z wyszukiwaniem, szczegóły historii, formularz dodawania/edycji, potwierdzenie usunięcia; bez danych demo jako „prawdziwych” wyników.
+- **Persystencja** — AsyncStorage (`storageKeys.personalRecords`) przez `src/services/personalRecords.ts` + `RecordsProvider`; kolejka zapisów, brak nadpisywania pustą listą przy błędzie odczytu.
+- **Testy** — Vitest: `src/utils/records.test.ts` + `src/services/personalRecords.test.ts` (łącznie z wcześniejszymi: `npm test`).
+
+Ograniczenia 3B:
+
+- Brak pełnego dziennika sesji (serie, RPE, objętość, przerwy).
+- Brak powiązania z katalogiem wger / planami (pole `exerciseId` zarezerwowane na później).
+- Brak wykresów progresji i eksportu CSV.
+- Data wprowadzana jako `RRRR-MM-DD` (bez natywnego date pickera).
 
 ### Kolejność priorytetów przy opóźnieniach
 
@@ -228,19 +291,27 @@ Plan zakłada pięć spotkań roboczych, każde około 90–120 minut. Między s
 
 ## 9. Uruchomienie projektu
 
-Wymagane: Node.js w wersji zgodnej z wybraną wersją Expo, npm oraz aplikacja Expo Go lub emulator/urządzenie skonfigurowane do testów.
+**Wymagania:** Node.js ≥ 20.19, npm, Expo Go (SDK 54) lub emulator.
+
+Stack startowy: **Expo SDK 54**, TypeScript, Expo Router, NativeWind 4.2, AsyncStorage, React Context.
 
 ```bash
 # Instalacja zależności
 npm install
 
-# Uruchomienie serwera deweloperskiego Expo
+# Sprawdzenie typów
+npm run typecheck
+
+# Testy jednostkowe (kalkulatory, timer, dziennik PR)
+npm test
+
+# Serwer deweloperski (równoważnie: npm start)
 npx expo start
 ```
 
-Jeśli projekt nie został jeszcze utworzony, najpierw należy wygenerować aplikację Expo z TypeScript, a następnie zainstalować pakiety kompatybilne z wybraną wersją SDK. Biblioteki natywne należy instalować zgodnie z dokumentacją Expo, preferując `npx expo install` tam, gdzie jest to zalecane.
+Opcjonalnie skopiuj `.env.example` → `.env` i ustaw publiczny `EXPO_PUBLIC_WGER_BASE_URL` (bez sekretów). Prefiks `EXPO_PUBLIC_` oznacza, że wartość trafia do paczki aplikacji — nie umieszczaj w niej kluczy API.
 
-> Powyższe polecenia są standardowym punktem startowym. Jeżeli istniejący projekt ma inne skrypty w `package.json`, należy stosować instrukcje z jego konfiguracji.
+Biblioteki natywne instaluj przez `npx expo install`, aby zachować zgodność z SDK 54.
 
 ## 10. Ryzyka i sposoby ograniczenia
 
