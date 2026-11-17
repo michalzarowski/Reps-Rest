@@ -14,7 +14,7 @@ Rep&Rest is a local-first React Native (Expo) training assistant. Prefer small, 
 - React Context API for shared state (no Redux/Zustand/Jotai)
 - AsyncStorage via `src/services/storage`
 - wger REST API via `src/services/api` (no secrets in the app)
-- Visual: Aquatic Liquid Glass (`expo-blur`, `expo-linear-gradient`, `expo-image`, Lucide)
+- Visual: Minimal Performance UI (tokens + NativeWind CSS variables, Lucide icons)
 
 Install native packages with `npx expo install`. Do not force-upgrade Expo SDK via `npm audit fix --force`.
 
@@ -29,26 +29,35 @@ Pin `lucide-react-native@0.577.0` (1.x breaks Metro resolution on SDK 54).
 | `src/components/ui/` | Shared presentational / glass components |
 | `src/services/api/` | HTTP client + wger stubs; no UI |
 | `src/services/storage/` | Only AsyncStorage access; JSON + `schemaVersion` |
-| `src/context/` | Narrow providers composed in `AppProviders` |
+| `src/context/` | Narrow providers composed in `AppProviders` (Settings → Theme → Records) |
 | `src/types/` | Domain TypeScript models |
 | `src/utils/` | Pure helpers (formulas belong here for unit testing) |
-| `src/theme/` | Design tokens (canonical) + navigation theme |
-| `src/mocks/` | Demo data for visual mockups only |
+| `src/theme/` | Design tokens (canonical, dark + light), `themeVars`, navigation theme |
+| `src/hooks/useNavigationOptions.ts` | Shared stack header and tab bar options |
+| `src/mocks/` | Example program catalog for the Plans tab (labelled as examples in UI) |
 
 Import alias: `@/*` → `src/*`.
 
-## Visual system (Aquatic Liquid Glass)
+## Visual system (Minimal Performance UI)
 
-- Dark-only UI. Canonical colors live in `src/theme/tokens.ts`. Mirror the same hex values in `tailwind.config.js`.
-- Feature screens must not hardcode hex colors — use `@/theme` tokens or semantic NativeWind classes (`bg-deep-water`, `text-aqua`, …).
-- Primary interactive accent is **Aqua** (`#3EE0E8`) for CTAs, active tabs and glows. Liquid Mint and Lilac are secondary; Acid Lime is reserved for rare highlights.
-- Glass panels: iOS uses `BlurView`; Android uses translucent fill (`androidGlassFill`) without experimental blur.
-- Gradients and image fades: `expo-linear-gradient` / `expo-image`, not CSS-only hacks.
-- Icons: only via `@/components` `Icon` (Lucide whitelist). Do not add FontAwesome or mixed icon sets.
-- Shared UI: `GlassPanel`, `GlassButton`, `LiquidBackground`, `ImmersiveImageCard`, `GlassTabBar`, `SectionHeader`, `ModuleTile`, `QuickToolButton`.
-- NativeWind = layout, spacing, typography utilities. Blur / gradient / immersive media = Expo modules.
-- Mockups may import `@/mocks/demo`. Real persistence and API come in later milestones.
-- Extra routes (stack): `/profile`, `/plans/[id]` — not tab roots.
+- Dark green surfaces with a single teal accent, plus a full light theme. Theme preference (`system` / `light` / `dark`) is persisted in `UserSettings.theme` and resolved by `ThemeProvider`.
+- Canonical colors live in `src/theme/tokens.ts` (`palettes.dark`, `palettes.light`). `tailwind.config.js` maps semantic class names to CSS variables (`rgb(var(--color-…))`) set by `ThemeProvider` — never hardcode hex values in feature code.
+- Use semantic classes: `bg-background`, `bg-surface`, `bg-surface-elevated`, `border-border`, `text-text-primary`, `text-text-secondary`, `text-text-muted`, `text-accent`, `bg-accent`, `text-on-accent`, `text-danger`. Opacity modifiers work (`bg-accent/15`).
+- When a raw color is needed (SVG, `Switch`, navigation options, icons) read `useTheme().colors`.
+- Type scale: `text-display` (30), `text-title` (21), `text-card-title` (17), `text-body` (15), `text-label` (13). Spacing 4/8/12/16/24/32; screen gutter 20; card radius 18, button radius 14; touch targets ≥ 44 px.
+- `mint`, `lilac`, `lime` are data colors only (timer phases, plate sizes, badges). Accent is the one interactive color.
+- No decorative blur, glow, animated backgrounds or stock imagery. Motion supports function only (pressed opacity, native transitions).
+- Icons: only via `@/components` `Icon` (Lucide whitelist, single stroke width).
+- Shared UI: `ScreenContainer`, `ScreenHeader`, `SectionHeader`, `AppCard`, `Button`, `IconButton`, `FormField`, `Stepper`, `SegmentedControl`, `ListRow`, `Badge`, `StatCard`, `EmptyState`, `LoadingState`, `ErrorState`, `confirmAction` / `showMessage`.
+- Never show demo values as user data. Features that are not implemented get an honest empty state, not an active-looking button.
+
+## Layout and navigation rules
+
+- Every screen renders inside `ScreenContainer`. It derives the top inset from the header context and the bottom inset from the tab bar context — do not add manual `paddingBottom` for the tab bar.
+- The tab bar is the navigator's standard in-flow bar (`useTabScreenOptions`); do not make it absolute or floating.
+- Do not use absolute positioning for page layout.
+- Use `confirmAction` / `showMessage` instead of `Alert.alert` with buttons (no-op on web).
+- Extra routes (root stack, no tab bar): `/profile`, `/plans/[id]`. Nested stacks set `unstable_settings.initialRouteName = 'index'` so deep links keep a back target.
 
 ## Rules
 
@@ -62,7 +71,7 @@ Import alias: `@/*` → `src/*`.
 
 ## Navigation map
 
-- Tabs: Home, Tools, Plans, Progress (`GlassTabBar` with active glow)
+- Tabs: Główna, Narzędzia, Plany, Postępy (standard tab bar, teal active tint)
 - Tools stack: 1RM, Timer, Plates, Records (list / exercise history / form)
 - Stack: Profile, Plan detail
 

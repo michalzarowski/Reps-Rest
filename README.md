@@ -152,19 +152,28 @@ src/
     records/
     progress/
     workout-plans/
-  context/                        # AppProviders, SettingsProvider
+  context/                        # AppProviders, Settings / Theme / Records providers
   hooks/
   services/
     api/                          # klient HTTP + stub wger (bez auto-fetch)
     storage/                      # AsyncStorage + schemaVersion
   constants/
-  theme/                          # Aquatic Liquid Glass tokens + navigationTheme
-  mocks/                          # dane demo do makiet wizualnych
+  theme/                          # Minimal Performance UI tokens (dark + light), themeVars, navigationTheme
+  mocks/                          # przykładowe programy (zakładka Plany) — oznaczone w UI jako przykłady
   utils/
   types/
 ```
 
-**System wizualny:** Aquatic Liquid Glass (ciemny motyw premium). Tokeny w `src/theme/tokens.ts` — Deep Water / Sea Depth, Aqua (główny akcent interakcji), Liquid Mint, Lilac. Komponenty w `src/components/ui/`. Makiety: Home (powitanie + hero + quick tools), Tools, Plans (filtry + szczegóły `/plans/[id]`), Progress, Profile (`/profile`), placeholdery UI narzędzi. NativeWind = layout; `expo-blur` / `expo-linear-gradient` / `expo-image` = efekty. Ikony: Lucide przez `Icon`.
+**System wizualny:** Minimal Performance UI — ciemna zieleń, subtelne powierzchnie i turkusowy akcent; pełny jasny motyw. Tokeny w `src/theme/tokens.ts` (paleta `dark` / `light`, skala odstępów 4/8/12/16/24/32, promienie, typografia). Motyw wybiera się w Profilu (Systemowy / Jasny / Ciemny) i jest zapisywany w `UserSettings.theme`. Klasy NativeWind (`bg-surface`, `text-text-primary`, `text-accent`, …) czytają kolory z CSS variables ustawianych przez `ThemeProvider`, więc ta sama klasa działa w obu motywach; tam, gdzie potrzebne są surowe wartości (SVG, opcje nawigacji), używa się `useTheme().colors`. Ikony: Lucide przez `Icon` (jedna grubość linii).
+
+**Komponenty wspólne** (`src/components/ui/`): `ScreenContainer`, `ScreenHeader`, `SectionHeader`, `AppCard`, `Button` (primary / secondary / ghost / danger), `IconButton`, `FormField`, `Stepper`, `SegmentedControl`, `ListRow`, `Badge`, `StatCard`, `EmptyState`, `LoadingState`, `ErrorState` oraz `confirmAction` / `showMessage` (działają także w Expo Web, gdzie `Alert` z przyciskami nie działa).
+
+**Nawigacja i safe area:**
+
+- Zakładki: Główna, Narzędzia, Plany, Postępy — standardowy (nieabsolutny) tab bar z `expo-router` `Tabs`. Navigator sam rezerwuje jego wysokość i inset home indicatora, więc ekrany nie potrzebują ręcznego `paddingBottom`.
+- `ScreenContainer` liczy odstępy z kontekstu nawigacji: górny inset tylko gdy nad ekranem nie ma natywnego nagłówka, dolny inset tylko poza zakładkami (Profil, szczegóły planu). Przewijanie ma `keyboardShouldPersistTaps` i automatyczne odsuwanie klawiatury na iOS; na Androidzie tab bar chowa się przy otwartej klawiaturze.
+- Stack Narzędzi (1RM, Timer, Talerze, Dziennik PR) ma natywny nagłówek z powrotem; `unstable_settings.initialRouteName` gwarantuje, że skrót z dashboardu zawsze ma pod sobą ekran Narzędzi. Tab bar pozostaje widoczny w narzędziach (szybkie przełączanie na siłowni).
+- Profil (`/profile`) i szczegóły programu (`/plans/[id]`) są w głównym stacku — pełny ekran bez tab bara, z przyciskiem powrotu.
 
 Szczegółowe konwencje dla agentów i dalszej pracy: zob. `AGENTS.md`.
 
@@ -193,19 +202,20 @@ Wewnętrznie warto przechowywać masy w jednej jednostce (np. kg), a dopiero prz
 
 ## 6. Proponowane ekrany
 
-Aktualny szkielet nawigacji (działa):
+Aktualny stan ekranów:
 
-1. **Home** — skróty do Narzędzi, Planów i Postępów.
-2. **Narzędzia** — hub z trasami do 1RM, timera, konwertera talerzy i dziennika PR.
-3. **Plany** — placeholder kreatora planów / katalogu ćwiczeń.
-4. **Postępy** — placeholder śledzenia masy ciała i BMI.
+1. **Główna** — powitanie i przycisk profilu, karta planu (uczciwy pusty stan, bo plany nie są jeszcze zapisywane), szybkie narzędzia, „Twoje postępy” z ostatnim rekordem z dziennika PR.
+2. **Narzędzia** — lista modułów: 1RM, timer, konwerter talerzy, dziennik PR.
+3. **Plany** — przykładowe programy z filtrem kategorii i ekranem szczegółów (wyraźnie oznaczone jako przykłady).
+4. **Postępy** — podsumowanie dziennika PR; masa ciała oznaczona jako funkcja w przygotowaniu.
+5. **Profil i ustawienia** — wybór motywu, liczba zapisanych wpisów, wersja aplikacji.
 
 Docelowa zawartość ekranów (do implementacji etapami):
 
 - **1RM / talerze / timer / rekordy** — pełna logika w `src/features/*` (spotkania 2–3 ✅).
 - **Postępy** — historia masy ciała, wykres i BMI.
 - **Plany** — lista planów, edytor, katalog wger + ćwiczenia własne.
-- **Ustawienia** — jednostki, wzrost, talerze (provider już istnieje; ekran UI później).
+- **Ustawienia** — motyw ✅; jednostki, wzrost i talerze później.
 
 ## 7. Harmonogram — 5 spotkań
 
