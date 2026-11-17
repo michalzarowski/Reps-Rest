@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AppProviders } from '@/context';
-import { colors } from '@/theme';
+import { useStackScreenOptions } from '@/hooks/useNavigationOptions';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -40,20 +40,20 @@ export default function RootLayout() {
 
   return (
     <AppProviders>
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.deepWater },
-          headerTintColor: colors.aqua,
-          headerTitleStyle: { color: colors.textPrimary },
-          contentStyle: { backgroundColor: colors.deepWater },
-          headerShadowVisible: false,
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ title: 'Profil' }} />
-        <Stack.Screen name="plans/[id]" options={{ title: 'Plan' }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <RootStack />
     </AppProviders>
+  );
+}
+
+/** Root stack: tabs + full-screen detail routes (no tab bar, native back). */
+function RootStack() {
+  const screenOptions = useStackScreenOptions();
+  return (
+    <Stack screenOptions={screenOptions}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Rep&Rest' }} />
+      <Stack.Screen name="profile" options={{ title: 'Profil i ustawienia' }} />
+      <Stack.Screen name="plans/[id]" options={{ title: 'Program' }} />
+      <Stack.Screen name="+not-found" options={{ title: 'Nie znaleziono' }} />
+    </Stack>
   );
 }

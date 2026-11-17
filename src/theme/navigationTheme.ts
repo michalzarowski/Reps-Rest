@@ -1,16 +1,21 @@
-import { DarkTheme, type Theme } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, type Theme } from '@react-navigation/native';
 
-import { colors } from './tokens';
+import { palettes, type ColorSchemeName } from './tokens';
 
-export const navigationTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: colors.aqua,
-    background: colors.deepWater,
-    card: colors.seaDepth,
-    text: colors.textPrimary,
-    border: colors.glassBorder,
-    notification: colors.acidLime,
-  },
-};
+export function createNavigationTheme(scheme: ColorSchemeName): Theme {
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const c = palettes[scheme];
+  return {
+    ...base,
+    dark: scheme === 'dark',
+    colors: {
+      ...base.colors,
+      primary: c.accent,
+      background: c.background,
+      card: c.background,
+      text: c.textPrimary,
+      border: c.border,
+      notification: c.accent,
+    },
+  };
+}

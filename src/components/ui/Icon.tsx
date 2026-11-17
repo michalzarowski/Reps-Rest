@@ -1,61 +1,79 @@
 import {
   Award,
-  Bookmark,
   Calculator,
+  Calendar,
+  ChartLine,
+  Check,
   ChevronRight,
-  CircleHelp,
+  CircleAlert,
   ClipboardList,
-  Clock,
+  Disc3,
   Dumbbell,
-  Home,
+  History,
+  House,
   Info,
   Minus,
+  Moon,
   Pause,
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   RotateCcw,
+  Scale,
   Search,
   Settings,
-  SkipForward,
-  Target,
+  Smartphone,
+  Sun,
+  Timer,
   Trash2,
   TrendingUp,
+  Trophy,
   User,
-  Weight,
   Wrench,
+  X,
   type LucideIcon,
 } from 'lucide-react-native';
 
-import { colors, iconSize } from '@/theme';
+import { useTheme } from '@/context';
+import { iconSize, iconStroke } from '@/theme';
 
+/** Lucide whitelist — the only icon set used in the app. */
 const icons = {
-  home: Home,
+  home: House,
   wrench: Wrench,
   clipboardList: ClipboardList,
   trendingUp: TrendingUp,
   calculator: Calculator,
-  clock: Clock,
-  weight: Weight,
+  timer: Timer,
+  plates: Disc3,
+  trophy: Trophy,
   dumbbell: Dumbbell,
   chevronRight: ChevronRight,
   play: Play,
   pause: Pause,
-  skipForward: SkipForward,
   rotateCcw: RotateCcw,
+  refresh: RefreshCw,
   trash: Trash2,
   plus: Plus,
   minus: Minus,
   user: User,
   settings: Settings,
-  target: Target,
-  bookmark: Bookmark,
   info: Info,
-  circleHelp: CircleHelp,
+  alert: CircleAlert,
   search: Search,
   pencil: Pencil,
   award: Award,
-} as const;
+  scale: Scale,
+  calendar: Calendar,
+  history: History,
+  chart: ChartLine,
+  check: Check,
+  close: X,
+  sun: Sun,
+  moon: Moon,
+  smartphone: Smartphone,
+} as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof icons;
 
@@ -64,18 +82,20 @@ type IconSize = keyof typeof iconSize;
 interface IconProps {
   name: IconName;
   size?: IconSize | number;
+  /** Defaults to the active primary text color. */
   color?: string;
-  strokeWidth?: number;
 }
 
-export function Icon({
-  name,
-  size = 'md',
-  color = colors.textPrimary,
-  strokeWidth = 2,
-}: IconProps) {
+export function Icon({ name, size = 'md', color }: IconProps) {
+  const { colors } = useTheme();
   const Component: LucideIcon = icons[name];
   const resolvedSize = typeof size === 'number' ? size : iconSize[size];
 
-  return <Component size={resolvedSize} color={color} strokeWidth={strokeWidth} />;
+  return (
+    <Component
+      size={resolvedSize}
+      color={color ?? colors.textPrimary}
+      strokeWidth={iconStroke}
+    />
+  );
 }

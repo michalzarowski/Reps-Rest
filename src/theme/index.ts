@@ -1,11 +1,14 @@
 export {
-  colors,
   iconSize,
+  iconStroke,
   layout,
   motion,
+  palettes,
   radii,
-  shadows,
   spacing,
   typography,
+  type ColorPalette,
+  type ColorSchemeName,
 } from './tokens';
-export { navigationTheme } from './navigationTheme';
+export { createNavigationTheme } from './navigationTheme';
+export { themeVars } from './themeVars';

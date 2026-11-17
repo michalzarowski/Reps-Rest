@@ -1,20 +1,17 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@/theme';
+import { useStackScreenOptions } from '@/hooks/useNavigationOptions';
+
+export const unstable_settings = {
+  initialRouteName: 'index',
+};
 
 export default function RecordsLayout() {
+  const screenOptions = useStackScreenOptions();
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: colors.aqua,
-        headerStyle: { backgroundColor: colors.deepWater },
-        headerTitleStyle: { color: colors.textPrimary },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.deepWater },
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: 'Rekordy' }} />
-      <Stack.Screen name="[exerciseKey]" options={{ title: 'Historia' }} />
+    <Stack screenOptions={screenOptions}>
+      <Stack.Screen name="index" options={{ title: 'Dziennik PR' }} />
+      <Stack.Screen name="[exerciseKey]" options={{ title: 'Historia ćwiczenia' }} />
       <Stack.Screen name="form" options={{ title: 'Wynik' }} />
     </Stack>
   );
