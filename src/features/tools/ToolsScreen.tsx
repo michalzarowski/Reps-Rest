@@ -1,27 +1,26 @@
-import { View } from 'react-native';
+import { router } from 'expo-router';
+import { Fragment } from 'react';
 
-import { ModuleTile, Screen, SectionHeader } from '@/components';
-import { demoTools } from '@/mocks/demo';
+import { AppCard, ListDivider, ListRow, ScreenContainer } from '@/components';
+
+import { TOOL_CATALOG } from './toolCatalog';
 
 export function ToolsScreen() {
   return (
-    <Screen
-      title="Narzędzia"
-      subtitle="Kalkulatory i stoper na salę treningową."
-    >
-      <SectionHeader title="Moduły" />
-      <View className="gap-3">
-        {demoTools.map((tool) => (
-          <ModuleTile
-            key={tool.href}
-            href={tool.href}
-            title={tool.title}
-            description={tool.description}
-            icon={tool.icon}
-            variant="elevated"
-          />
+    <ScreenContainer title="Narzędzia" subtitle="Kalkulatory, timer i dziennik wyników.">
+      <AppCard padding="none" className="overflow-hidden">
+        {TOOL_CATALOG.map((tool, index) => (
+          <Fragment key={tool.title}>
+            {index > 0 ? <ListDivider /> : null}
+            <ListRow
+              icon={tool.icon}
+              title={tool.title}
+              description={tool.description}
+              onPress={() => router.push(tool.href)}
+            />
+          </Fragment>
         ))}
-      </View>
-    </Screen>
+      </AppCard>
+    </ScreenContainer>
   );
 }
