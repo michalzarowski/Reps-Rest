@@ -5,7 +5,7 @@ import { contentGlow, GlassSurface, Icon, SectionHeader } from '@/components';
 import { useTheme } from '@/context';
 import { TOOL_CATALOG } from '@/features/tools';
 
-/** Below this width four tiles in a row get too narrow for labels. */
+/** Poniżej tej szerokości cztery kafelki w rzędzie są za wąskie na etykiety. */
 const TWO_COLUMN_BREAKPOINT = 360;
 
 export function QuickTools() {

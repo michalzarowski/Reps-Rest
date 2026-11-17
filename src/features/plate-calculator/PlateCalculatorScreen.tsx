@@ -1,5 +1,5 @@
-import { Fragment, useMemo, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Fragment, useMemo, useState } from "react";
+import { Text, TextInput, View } from "react-native";
 
 import {
   AppCard,
@@ -11,10 +11,10 @@ import {
   ScreenContainer,
   SectionHeader,
   SegmentedControl,
-} from '@/components';
-import { useTheme } from '@/context';
-import type { ColorPalette } from '@/theme';
-import type { PlateConverterMode, PlateCount } from '@/types';
+} from "@/components";
+import { useTheme } from "@/context";
+import type { ColorPalette } from "@/theme";
+import type { PlateConverterMode, PlateCount } from "@/types";
 import {
   DEFAULT_BAR_WEIGHT_KG,
   STANDARD_BAR_OPTIONS_KG,
@@ -24,21 +24,24 @@ import {
   parsePositiveNumber,
   solvePlatesToTarget,
   solveTargetToPlates,
-} from '@/utils';
+} from "@/utils";
 
-type BarPreset = 20 | 15 | 'custom';
+type BarPreset = 20 | 15 | "custom";
 
 const MODE_OPTIONS = [
-  { value: 'target-to-plates', label: 'Ciężar → talerze' },
-  { value: 'plates-to-target', label: 'Talerze → ciężar' },
+  { value: "target-to-plates", label: "Ciężar → talerze" },
+  { value: "plates-to-target", label: "Talerze → ciężar" },
 ] as const satisfies readonly { value: PlateConverterMode; label: string }[];
 
 const BAR_OPTIONS: readonly { value: BarPreset; label: string }[] = [
-  ...STANDARD_BAR_OPTIONS_KG.map((kg) => ({ value: kg as 20 | 15, label: `${kg} kg` })),
-  { value: 'custom', label: 'Inny' },
+  ...STANDARD_BAR_OPTIONS_KG.map((kg) => ({
+    value: kg as 20 | 15,
+    label: `${kg} kg`,
+  })),
+  { value: "custom", label: "Inny" },
 ];
 
-/** Plate height in the barbell drawing, proportional to plate mass. */
+/** Wysokość talerza w rysunku gryfu, proporcjonalna do masy talerza. */
 function plateHeight(plateKg: number): number {
   const clamped = Math.min(25, Math.max(1.25, plateKg));
   return 36 + ((clamped - 1.25) / (25 - 1.25)) * 64;
@@ -55,19 +58,28 @@ function plateColor(plateKg: number, colors: ColorPalette): string {
 
 type TargetResult =
   | ReturnType<typeof solveTargetToPlates>
-  | { ok: false; errors: string[]; solution: null; nearest: null; message: string | null };
+  | {
+      ok: false;
+      errors: string[];
+      solution: null;
+      nearest: null;
+      message: string | null;
+    };
 
 export function PlateCalculatorScreen() {
-  const [mode, setMode] = useState<PlateConverterMode>('target-to-plates');
-  const [targetText, setTargetText] = useState('100');
-  const [barPreset, setBarPreset] = useState<BarPreset>(DEFAULT_BAR_WEIGHT_KG as 20);
-  const [customBarText, setCustomBarText] = useState('20');
+  const [mode, setMode] = useState<PlateConverterMode>("target-to-plates");
+  const [targetText, setTargetText] = useState("100");
+  const [barPreset, setBarPreset] = useState<BarPreset>(
+    DEFAULT_BAR_WEIGHT_KG as 20,
+  );
+  const [customBarText, setCustomBarText] = useState("20");
   const [plateCounts, setPlateCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(STANDARD_PLATES_KG.map((p) => [p, 0])),
   );
 
   const barKg = useMemo(
-    () => (barPreset === 'custom' ? parsePositiveNumber(customBarText) : barPreset),
+    () =>
+      barPreset === "custom" ? parsePositiveNumber(customBarText) : barPreset,
     [barPreset, customBarText],
   );
 
@@ -75,9 +87,15 @@ export function PlateCalculatorScreen() {
     const totalKg = parsePositiveNumber(targetText);
     if (totalKg == null || barKg == null) {
       const errors: string[] = [];
-      if (totalKg == null) errors.push('Podaj prawidłowy ciężar całkowity');
-      if (barKg == null) errors.push('Podaj prawidłową masę gryfu');
-      return { ok: false, errors, solution: null, nearest: null, message: errors[0] ?? null };
+      if (totalKg == null) errors.push("Podaj prawidłowy ciężar całkowity");
+      if (barKg == null) errors.push("Podaj prawidłową masę gryfu");
+      return {
+        ok: false,
+        errors,
+        solution: null,
+        nearest: null,
+        message: errors[0] ?? null,
+      };
     }
     return solveTargetToPlates(totalKg, barKg);
   }, [targetText, barKg]);
@@ -86,7 +104,7 @@ export function PlateCalculatorScreen() {
     if (barKg == null) {
       return {
         ok: false as const,
-        errors: ['Podaj prawidłową masę gryfu'],
+        errors: ["Podaj prawidłową masę gryfu"],
         totalKg: null,
         barKg: 0,
         perSideKg: 0,
@@ -104,7 +122,7 @@ export function PlateCalculatorScreen() {
   };
 
   const setPlateCountText = (plateKg: number, raw: string) => {
-    if (raw.trim() === '') {
+    if (raw.trim() === "") {
       setPlateCounts((prev) => ({ ...prev, [plateKg]: 0 }));
       return;
     }
@@ -114,12 +132,14 @@ export function PlateCalculatorScreen() {
     }
   };
 
-  const solution = mode === 'target-to-plates' ? targetResult.solution : null;
+  const solution = mode === "target-to-plates" ? targetResult.solution : null;
   const showPlates =
-    (mode === 'target-to-plates' && solution != null) ||
-    (mode === 'plates-to-target' && fromPlatesResult.ok);
+    (mode === "target-to-plates" && solution != null) ||
+    (mode === "plates-to-target" && fromPlatesResult.ok);
   const resultPlates: PlateCount[] =
-    mode === 'target-to-plates' ? (solution?.plates ?? []) : fromPlatesResult.plates;
+    mode === "target-to-plates"
+      ? (solution?.plates ?? [])
+      : fromPlatesResult.plates;
 
   return (
     <ScreenContainer>
@@ -132,7 +152,9 @@ export function PlateCalculatorScreen() {
         />
 
         <View>
-          <Text className="mb-1.5 text-label font-medium text-text-secondary">Gryf</Text>
+          <Text className="mb-1.5 text-label font-medium text-text-secondary">
+            Gryf
+          </Text>
           <SegmentedControl
             accessibilityLabel="Masa gryfu"
             options={BAR_OPTIONS}
@@ -141,7 +163,7 @@ export function PlateCalculatorScreen() {
           />
         </View>
 
-        {barPreset === 'custom' ? (
+        {barPreset === "custom" ? (
           <FormField
             label="Masa gryfu"
             value={customBarText}
@@ -154,7 +176,7 @@ export function PlateCalculatorScreen() {
           />
         ) : null}
 
-        {mode === 'target-to-plates' ? (
+        {mode === "target-to-plates" ? (
           <FormField
             label="Ciężar docelowy (gryf + talerze)"
             value={targetText}
@@ -169,7 +191,7 @@ export function PlateCalculatorScreen() {
         ) : null}
       </View>
 
-      {mode === 'plates-to-target' ? (
+      {mode === "plates-to-target" ? (
         <View className="mb-6">
           <SectionHeader title="Talerze na jedną stronę" />
           <AppCard padding="none" className="overflow-hidden">
@@ -189,8 +211,11 @@ export function PlateCalculatorScreen() {
       ) : null}
 
       <View className="mb-6">
-        {mode === 'target-to-plates' ? (
-          <TargetResultBlock result={targetResult} onPickTarget={(kg) => setTargetText(formatKg(kg))} />
+        {mode === "target-to-plates" ? (
+          <TargetResultBlock
+            result={targetResult}
+            onPickTarget={(kg) => setTargetText(formatKg(kg))}
+          />
         ) : (
           <FromPlatesResultBlock result={fromPlatesResult} />
         )}
@@ -198,7 +223,10 @@ export function PlateCalculatorScreen() {
 
       {showPlates ? (
         <View>
-          <SectionHeader title="Układ talerzy" subtitle="Jedna strona gryfu, od środka" />
+          <SectionHeader
+            title="Układ talerzy"
+            subtitle="Jedna strona gryfu, od środka"
+          />
           <AppCard>
             <BarbellSleeve plates={resultPlates} />
             {resultPlates.length > 0 ? (
@@ -228,11 +256,14 @@ function TargetResultBlock({
 }) {
   if (!result.ok || !result.solution) {
     const nearest = result.nearest;
-    const hasNearest = nearest && (nearest.belowKg != null || nearest.aboveKg != null);
+    const hasNearest =
+      nearest && (nearest.belowKg != null || nearest.aboveKg != null);
     return (
       <View className="gap-3">
         <ErrorState
-          message={result.message ?? result.errors[0] ?? 'Nieprawidłowe dane wejściowe'}
+          message={
+            result.message ?? result.errors[0] ?? "Nieprawidłowe dane wejściowe"
+          }
           details={result.errors.slice(1)}
         />
         {hasNearest ? (
@@ -280,9 +311,17 @@ function TargetResultBlock({
   );
 }
 
-function FromPlatesResultBlock({ result }: { result: ReturnType<typeof solvePlatesToTarget> }) {
+function FromPlatesResultBlock({
+  result,
+}: {
+  result: ReturnType<typeof solvePlatesToTarget>;
+}) {
   if (!result.ok || result.totalKg == null) {
-    return <ErrorState message={result.errors[0] ?? 'Nieprawidłowe dane wejściowe'} />;
+    return (
+      <ErrorState
+        message={result.errors[0] ?? "Nieprawidłowe dane wejściowe"}
+      />
+    );
   }
   return (
     <ResultCard
@@ -293,14 +332,27 @@ function FromPlatesResultBlock({ result }: { result: ReturnType<typeof solvePlat
   );
 }
 
-function ResultCard({ label, totalKg, detail }: { label: string; totalKg: number; detail: string }) {
+function ResultCard({
+  label,
+  totalKg,
+  detail,
+}: {
+  label: string;
+  totalKg: number;
+  detail: string;
+}) {
   return (
     <AppCard variant="elevated" glow>
       <Text className="text-label font-semibold text-accent">{label}</Text>
       <Text
         accessibilityLiveRegion="polite"
         className="mt-1 text-text-primary"
-        style={{ fontSize: 44, lineHeight: 52, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+        style={{
+          fontSize: 44,
+          lineHeight: 52,
+          fontWeight: "700",
+          fontVariant: ["tabular-nums"],
+        }}
       >
         {formatKg(totalKg)} kg
       </Text>
@@ -346,11 +398,11 @@ function PlateCountRow({
         style={{
           minWidth: 40,
           minHeight: 44,
-          textAlign: 'center',
+          textAlign: "center",
           color: colors.textPrimary,
           fontSize: 18,
-          fontWeight: '600',
-          fontVariant: ['tabular-nums'],
+          fontWeight: "600",
+          fontVariant: ["tabular-nums"],
         }}
       />
       <IconButton
@@ -370,8 +422,12 @@ function PlateLegendRow({ plate }: { plate: PlateCount }) {
         className="h-3 w-3 rounded-full"
         style={{ backgroundColor: plateColor(plate.plateKg, colors) }}
       />
-      <Text className="flex-1 text-body text-text-primary">{formatKg(plate.plateKg)} kg</Text>
-      <Text className="text-body font-semibold text-text-primary">× {plate.count}</Text>
+      <Text className="flex-1 text-body text-text-primary">
+        {formatKg(plate.plateKg)} kg
+      </Text>
+      <Text className="text-body font-semibold text-text-primary">
+        × {plate.count}
+      </Text>
     </View>
   );
 }
@@ -391,13 +447,19 @@ function BarbellSleeve({ plates }: { plates: PlateCount[] }) {
       accessible
       accessibilityLabel={
         stacked.length === 0
-          ? 'Pusty gryf'
-          : `Na stronę: ${stacked.map((kg) => `${formatKg(kg)} kg`).join(', ')}`
+          ? "Pusty gryf"
+          : `Na stronę: ${stacked.map((kg) => `${formatKg(kg)} kg`).join(", ")}`
       }
       className="min-h-[108px] flex-row items-center py-2"
     >
-      <View className="h-4 w-4 rounded-sm" style={{ backgroundColor: colors.textMuted }} />
-      <View className="h-8 w-2 rounded-sm" style={{ backgroundColor: colors.textMuted }} />
+      <View
+        className="h-4 w-4 rounded-sm"
+        style={{ backgroundColor: colors.textMuted }}
+      />
+      <View
+        className="h-8 w-2 rounded-sm"
+        style={{ backgroundColor: colors.textMuted }}
+      />
       <View className="flex-1 flex-row items-center">
         <View
           className="absolute left-0 right-0 h-2.5 rounded-full"

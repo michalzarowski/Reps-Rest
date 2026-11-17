@@ -19,9 +19,9 @@ import { formatDisplayDate, formatWeightReps } from '@/utils/records';
 
 interface ProgressSummaryProps {
   overview: RecordsOverview;
-  /** Newest body-weight measurement, if any. */
+  /** Najnowszy pomiar masy ciała, jeśli istnieje. */
   latestWeight: BodyWeightEntry | undefined;
-  /** Short trend label, e.g. "Trend spadkowy". */
+  /** Krótka etykieta trendu, np. „Trend spadkowy”. */
   trendTitle: string;
   isLoading: boolean;
   error: string | null;
@@ -29,8 +29,8 @@ interface ProgressSummaryProps {
 }
 
 /**
- * Dashboard "Twoje postępy": body weight card + recent PRs card.
- * Only data that really exists on the device is shown.
+ * Sekcja „Twoje postępy”: karta masy ciała + karta ostatnich PR.
+ * Pokazywane są tylko dane faktycznie zapisane na urządzeniu.
  */
 export function ProgressSummary({
   overview,

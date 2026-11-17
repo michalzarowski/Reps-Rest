@@ -1,17 +1,17 @@
-import { router } from 'expo-router';
-import { Text, View } from 'react-native';
+import { router } from "expo-router";
+import { Text, View } from "react-native";
 
-import { Button, contentGlow, GlassSurface, Icon } from '@/components';
-import { useTheme } from '@/context';
-import type { WorkoutPlan } from '@/types';
+import { Button, contentGlow, GlassSurface, Icon } from "@/components";
+import { useTheme } from "@/context";
+import type { WorkoutPlan } from "@/types";
 
 interface PlanCardProps {
-  /** Saved plan to feature; `null` until plan persistence exists. */
+  /** do implementacji */
   plan: WorkoutPlan | null;
 }
 
 function exerciseCountLabel(count: number): string {
-  if (count === 1) return '1 ćwiczenie';
+  if (count === 1) return "1 ćwiczenie";
   const lastTwo = count % 100;
   const last = count % 10;
   if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
@@ -21,8 +21,8 @@ function exerciseCountLabel(count: number): string {
 }
 
 /**
- * Horizontal glass hero card: eyebrow, title, meta, one CTA. A glowing outline
- * icon on the right replaces a photo (no training imagery in assets).
+ * Pozioma szklana karta hero: etykieta, tytuł, meta i jedno CTA. Po prawej
+ * świecąca ikona konturowa zamiast zdjęcia (brak grafik treningowych w assetach).
  */
 export function PlanCard({ plan }: PlanCardProps) {
   const { colors, glass } = useTheme();
@@ -41,11 +41,14 @@ export function PlanCard({ plan }: PlanCardProps) {
 
       <View className="p-5 pr-24">
         <Text className="text-label font-semibold uppercase tracking-wider text-accent">
-          {plan ? 'Twój plan' : 'Plan treningowy'}
+          {plan ? "Twój plan" : "Plan treningowy"}
         </Text>
         {plan ? (
           <>
-            <Text className="mt-1 text-title text-text-primary" numberOfLines={2}>
+            <Text
+              className="mt-1 text-title text-text-primary"
+              numberOfLines={2}
+            >
               {plan.name}
             </Text>
             <Text className="mt-1 text-body text-text-secondary">
@@ -54,7 +57,9 @@ export function PlanCard({ plan }: PlanCardProps) {
           </>
         ) : (
           <>
-            <Text className="mt-1 text-title text-text-primary">Nie masz jeszcze planu</Text>
+            <Text className="mt-1 text-title text-text-primary">
+              Nie masz jeszcze planu
+            </Text>
             <Text className="mt-1 text-body text-text-secondary">
               Kreator planów jest w przygotowaniu. Zobacz przykładowe programy.
             </Text>
@@ -62,13 +67,16 @@ export function PlanCard({ plan }: PlanCardProps) {
         )}
         <View className="mt-4">
           <Button
-            label={plan ? 'Zobacz plan' : 'Przeglądaj programy'}
+            label={plan ? "Zobacz plan" : "Przeglądaj programy"}
             size="sm"
             fullWidth={false}
             onPress={() =>
               plan
-                ? router.push({ pathname: '/plans/[id]', params: { id: plan.id } })
-                : router.push('/plans')
+                ? router.push({
+                    pathname: "/plans/[id]",
+                    params: { id: plan.id },
+                  })
+                : router.push("/plans")
             }
           />
         </View>

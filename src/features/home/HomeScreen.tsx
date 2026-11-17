@@ -56,7 +56,7 @@ export function HomeScreen() {
       />
 
       <View className="gap-8">
-        {/* Workout plans are not persisted yet — the card shows an honest empty state. */}
+        {/* Plany treningowe nie są jeszcze utrwalane — karta pokazuje uczciwy pusty stan. */}
         <PlanCard plan={null} />
         <QuickTools />
         <ProgressSummary
