@@ -1,91 +1,105 @@
+import { router } from 'expo-router';
+import { Fragment, useMemo } from 'react';
 import { Text, View } from 'react-native';
 
 import {
-  GlassPanel,
-  ImmersiveImageCard,
-  MetricChip,
-  Screen,
+  AppCard,
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  ListDivider,
+  ListRow,
+  LoadingState,
+  ScreenContainer,
   SectionHeader,
+  StatCard,
 } from '@/components';
-import {
-  demoBodyWeight,
-  demoProgressSummary,
-  demoRecords,
-} from '@/mocks/demo';
-import { colors, radii } from '@/theme';
-
-const progressImage = require('../../../assets/images/immersive/progress-training.png');
-
-const maxWeight = Math.max(...demoBodyWeight.map((e) => e.weightKg));
-const minWeight = Math.min(...demoBodyWeight.map((e) => e.weightKg));
-const range = Math.max(maxWeight - minWeight, 0.1);
+import { useRecords } from '@/context';
+import { buildRecordsOverview } from '@/utils';
+import { formatDisplayDate, formatWeightReps } from '@/utils/records';
 
 export function ProgressScreen() {
-  const { currentWeightKg, heightCm, bmiLabel, bmiRange, goal } =
-    demoProgressSummary;
+  const { records, isLoading, error, reloadRecords } = useRecords();
+  const overview = useMemo(() => buildRecordsOverview(records, 8), [records]);
+  const showLoading = isLoading && records.length === 0;
 
   return (
-    <Screen title="Postępy" subtitle="Dane demonstracyjne — jeszcze bez zapisu.">
-      <ImmersiveImageCard source={progressImage} height={170}>
-        <Text className="text-caption font-semibold text-aqua">Masa ciała</Text>
-        <Text className="mt-1 text-hero text-text-primary">
-          {currentWeightKg.toFixed(1)} kg
-        </Text>
-        <Text className="mt-1 text-caption text-text-secondary">
-          Cel: {goal} · wzrost {heightCm} cm
-        </Text>
-      </ImmersiveImageCard>
+    <ScreenContainer title="Postępy" subtitle="Podsumowanie danych zapisanych na tym urządzeniu.">
+      <View className="gap-8">
+        {error ? (
+          <ErrorState
+            message={error}
+            actionLabel="Spróbuj ponownie"
+            onActionPress={() => void reloadRecords()}
+          />
+        ) : null}
 
-      <View className="-mt-3 mb-5 flex-row flex-wrap gap-2">
-        <MetricChip label={`BMI ${bmiLabel}`} tone="mint" />
-        <MetricChip label={bmiRange} tone="aqua" />
-        <MetricChip label={goal} tone="lilac" />
-      </View>
-
-      <SectionHeader title="Trend masy ciała" subtitle="Ostatnie 7 wpisów demonstracyjnych." />
-      <GlassPanel variant="soft">
-        <View className="h-32 flex-row items-end justify-between gap-2">
-          {demoBodyWeight.map((entry) => {
-            const normalized = (entry.weightKg - minWeight) / range;
-            const barHeight = 28 + normalized * 84;
-            return (
-              <View key={entry.date} className="flex-1 items-center">
-                <View
-                  style={{
-                    height: barHeight,
-                    width: '72%',
-                    borderRadius: radii.sm,
-                    backgroundColor: colors.aqua,
-                    opacity: 0.35 + normalized * 0.65,
-                  }}
-                />
-                <Text className="mt-2 text-[10px] text-text-secondary">
-                  {entry.date.slice(0, 5)}
-                </Text>
+        <View>
+          <SectionHeader title="Rekordy osobiste" />
+          {showLoading ? (
+            <LoadingState label="Wczytywanie dziennika…" />
+          ) : overview.entryCount === 0 ? (
+            <EmptyState
+              icon="trophy"
+              title="Brak zapisanych wyników"
+              description="Dodaj wynik w dzienniku PR, aby śledzić swoje rekordy."
+              actionLabel="Dodaj wynik"
+              onActionPress={() => router.push('/tools/records/form')}
+            />
+          ) : (
+            <View className="gap-3">
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <StatCard label="Ćwiczenia" value={String(overview.exerciseCount)} />
+                </View>
+                <View className="flex-1">
+                  <StatCard label="Wpisy" value={String(overview.entryCount)} />
+                </View>
               </View>
-            );
-          })}
-        </View>
-        <Text className="mt-4 text-caption text-text-secondary">
-          BMI to wskaźnik orientacyjny — nie mierzy tkanki tłuszczowej.
-        </Text>
-      </GlassPanel>
 
-      <View className="mt-6">
-        <SectionHeader title="Ostatnie PR" />
-        <View className="gap-3">
-          {demoRecords.map((record) => (
-            <GlassPanel key={`${record.exercise}-${record.date}`} variant="solid">
-              <Text className="text-body font-semibold text-text-primary">
-                {record.exercise}
-              </Text>
-              <Text className="mt-1 text-caption text-text-secondary">
-                {record.weightKg} kg × {record.reps} · {record.date}
-              </Text>
-            </GlassPanel>
-          ))}
+              <AppCard padding="none" className="overflow-hidden">
+                <Text className="px-4 pb-1 pt-4 text-label text-text-secondary">
+                  Ostatnie rekordy
+                </Text>
+                {overview.recentPrs.map((entry, index) => (
+                  <Fragment key={entry.id}>
+                    {index > 0 ? <ListDivider /> : null}
+                    <ListRow
+                      title={entry.exerciseName}
+                      description={`${formatWeightReps(entry.weightKg, entry.reps)} · ${formatDisplayDate(entry.date)}`}
+                      trailing={entry.isCurrentPr ? <Badge label="PR" tone="accent" /> : null}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/tools/records/[exerciseKey]',
+                          params: { exerciseKey: entry.exerciseKey },
+                        })
+                      }
+                    />
+                  </Fragment>
+                ))}
+              </AppCard>
+
+              <Button
+                label="Otwórz dziennik PR"
+                variant="ghost"
+                size="sm"
+                fullWidth={false}
+                onPress={() => router.push('/tools/records')}
+              />
+            </View>
+          )}
+        </View>
+
+        <View>
+          <SectionHeader title="Masa ciała" />
+          <EmptyState
+            icon="scale"
+            title="Pomiary w przygotowaniu"
+            description="Zapisywanie masy ciała i wykres trendu pojawią się w kolejnej wersji aplikacji."
+          />
         </View>
       </View>
-    </Screen>
+    </ScreenContainer>
   );
 }

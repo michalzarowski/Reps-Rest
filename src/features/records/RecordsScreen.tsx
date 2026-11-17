@@ -1,45 +1,57 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import {
+  AppCard,
+  Badge,
+  Button,
   EmptyState,
-  ErrorBanner,
-  GlassButton,
-  GlassPanel,
+  ErrorState,
+  FormField,
   Icon,
-  MetricChip,
-  Screen,
-  SectionHeader,
+  LoadingState,
+  ScreenContainer,
 } from '@/components';
-import { useRecords } from '@/context';
-import { colors } from '@/theme';
-import {
-  formatDisplayDate,
-  formatWeightReps,
-} from '@/utils/records';
+import { useRecords, useTheme } from '@/context';
+import { formatDisplayDate, formatWeightReps } from '@/utils/records';
 
 export function RecordsScreen() {
-  const { isLoading, error, getGroups, clearError, reloadRecords } = useRecords();
+  const { colors } = useTheme();
+  const { isLoading, error, getGroups, clearError, reloadRecords, records } = useRecords();
   const [query, setQuery] = useState('');
 
   const groups = useMemo(() => getGroups(query), [getGroups, query]);
+  const hasAny = records.length > 0;
 
   return (
-    <Screen tabBarInset={false}>
-      <SectionHeader
-        title="Dziennik PR"
-        subtitle="Historia wyników i rekordy według liczby powtórzeń"
-      />
+    <ScreenContainer>
+      <View className="mb-6 gap-3">
+        <Button
+          label="Dodaj wynik"
+          icon="plus"
+          onPress={() => router.push('/tools/records/form')}
+        />
+        {hasAny ? (
+          <FormField
+            label="Szukaj ćwiczenia"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="np. przysiad"
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            trailing={<Icon name="search" size="sm" color={colors.textMuted} />}
+          />
+        ) : null}
+      </View>
 
       {error ? (
-        <View className="mb-3 gap-2">
-          <ErrorBanner message={error} />
-          <GlassButton
-            label="Spróbuj ponownie"
-            variant="secondary"
-            size="sm"
-            onPress={() => {
+        <View className="mb-4">
+          <ErrorState
+            message={error}
+            actionLabel="Spróbuj ponownie"
+            onActionPress={() => {
               clearError();
               void reloadRecords();
             }}
@@ -47,94 +59,54 @@ export function RecordsScreen() {
         </View>
       ) : null}
 
-      <GlassPanel variant="solid" className="mb-4">
-        <View className="flex-row items-center gap-2">
-          <Icon name="search" size="sm" color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Szukaj ćwiczenia…"
-            placeholderTextColor={colors.textMuted}
-            autoCorrect={false}
-            autoCapitalize="none"
-            style={{
-              flex: 1,
-              color: colors.textPrimary,
-              fontSize: 16,
-              fontWeight: '600',
-              paddingVertical: 4,
-            }}
-          />
-        </View>
-      </GlassPanel>
-
-      <View className="mb-4">
-        <GlassButton
-          label="Dodaj wynik"
-          onPress={() => router.push('/tools/records/form')}
-        />
-      </View>
-
-      {isLoading ? (
-        <View className="items-center py-10">
-          <ActivityIndicator color={colors.aqua} />
-          <Text className="mt-3 text-caption text-text-secondary">
-            Wczytywanie dziennika…
-          </Text>
-        </View>
+      {isLoading && !hasAny ? (
+        <LoadingState label="Wczytywanie dziennika…" />
       ) : groups.length === 0 ? (
         <EmptyState
-          title={query.trim() ? 'Brak wyników wyszukiwania' : 'Brak zapisanych wyników'}
+          icon={query.trim() ? 'search' : 'trophy'}
+          title={query.trim() ? 'Brak pasujących ćwiczeń' : 'Brak zapisanych wyników'}
           description={
             query.trim()
               ? 'Spróbuj innej nazwy ćwiczenia.'
-              : 'Dodaj pierwszy wynik, aby śledzić rekordy osobiste na urządzeniu.'
+              : 'Dodaj pierwszy wynik, aby śledzić rekordy osobiste na tym urządzeniu.'
           }
         />
       ) : (
         <View className="gap-3">
           {groups.map((group) => (
-            <GlassPanel
+            <AppCard
               key={group.exerciseKey}
-              variant="elevated"
               onPress={() =>
                 router.push({
                   pathname: '/tools/records/[exerciseKey]',
                   params: { exerciseKey: group.exerciseKey },
                 })
               }
+              accessibilityLabel={`${group.exerciseName}, ${group.entryCount} ${entryLabel(group.entryCount)}`}
+              accessibilityHint="Otwiera historię ćwiczenia"
             >
-              <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-row items-center gap-3">
                 <View className="flex-1">
-                  <Text className="text-body font-semibold text-text-primary">
-                    {group.exerciseName}
-                  </Text>
-                  <Text className="mt-1 text-caption text-text-secondary">
-                    Ostatnio: {formatDisplayDate(group.lastTrainedDate)}
-                  </Text>
+                  <Text className="text-card-title text-text-primary">{group.exerciseName}</Text>
                   {group.highlight ? (
-                    <Text className="mt-2 text-caption" style={{ color: colors.aqua }}>
-                      Najcięższy:{' '}
-                      {formatWeightReps(
-                        group.highlight.weightKg,
-                        group.highlight.reps,
-                      )}
+                    <Text className="mt-1 text-body font-semibold text-accent">
+                      Najcięższy: {formatWeightReps(group.highlight.weightKg, group.highlight.reps)}
                     </Text>
                   ) : null}
+                  <View className="mt-2 flex-row flex-wrap items-center gap-2">
+                    <Badge label={`${group.entryCount} ${entryLabel(group.entryCount)}`} />
+                    <Text className="text-label text-text-secondary">
+                      Ostatnio {formatDisplayDate(group.lastTrainedDate)}
+                    </Text>
+                  </View>
                 </View>
-                <View className="items-end gap-2">
-                  <MetricChip
-                    label={`${group.entryCount} ${entryLabel(group.entryCount)}`}
-                    tone="mint"
-                  />
-                  <Icon name="chevronRight" size="sm" color={colors.textMuted} />
-                </View>
+                <Icon name="chevronRight" size="sm" color={colors.textMuted} />
               </View>
-            </GlassPanel>
+            </AppCard>
           ))}
         </View>
       )}
-    </Screen>
+    </ScreenContainer>
   );
 }
 
@@ -142,7 +114,9 @@ function entryLabel(count: number): string {
   if (count === 1) {
     return 'wpis';
   }
-  if (count >= 2 && count <= 4) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
     return 'wpisy';
   }
   return 'wpisów';

@@ -1,70 +1,74 @@
-import { router, type Href } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+import { router } from 'expo-router';
+import { Text, View } from 'react-native';
 
-import { GlassPanel, Icon, Screen, SectionHeader } from '@/components';
-import { demoProfileLinks, demoUser } from '@/mocks/demo';
-import { colors } from '@/theme';
+import {
+  AppCard,
+  ErrorState,
+  ListRow,
+  ScreenContainer,
+  SectionHeader,
+  SegmentedControl,
+} from '@/components';
+import { APP_NAME } from '@/constants';
+import { useRecords, useSettings, useTheme } from '@/context';
+import type { UserSettings } from '@/types';
+
+const THEME_OPTIONS = [
+  { value: 'system', label: 'Systemowy' },
+  { value: 'light', label: 'Jasny' },
+  { value: 'dark', label: 'Ciemny' },
+] as const satisfies readonly { value: UserSettings['theme']; label: string }[];
 
 export function ProfileScreen() {
+  const { preference, setPreference } = useTheme();
+  const { error: settingsError } = useSettings();
+  const { records } = useRecords();
+  const version = Constants.expoConfig?.version ?? '—';
+
   return (
-    <Screen tabBarInset={false} subtitle={demoUser.motto}>
-      <View className="mb-6 items-center">
-        <View
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: 44,
-            borderWidth: 2,
-            borderColor: colors.aqua,
-            backgroundColor: colors.activeGlow,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="user" color={colors.aqua} size="xl" />
-        </View>
-        <Text className="mt-3 text-title text-text-primary">{demoUser.name}</Text>
-      </View>
+    <ScreenContainer>
+      <View className="gap-8">
+        {settingsError ? <ErrorState message={settingsError} /> : null}
 
-      <GlassPanel variant="elevated">
-        <View className="flex-row justify-between">
-          <Stat label="Masa" value={`${demoUser.weightKg} kg`} />
-          <Stat label="Wzrost" value={`${demoUser.heightCm} cm`} />
-          <Stat label="Wiek" value={`${demoUser.age}`} />
+        <View>
+          <SectionHeader title="Wygląd" subtitle="Motyw aplikacji zapisywany na urządzeniu." />
+          <SegmentedControl
+            accessibilityLabel="Motyw aplikacji"
+            options={THEME_OPTIONS}
+            value={preference}
+            onChange={(next) => void setPreference(next)}
+          />
         </View>
-      </GlassPanel>
 
-      <View className="mt-6">
-        <SectionHeader title="Konto" subtitle="Tylko szkielet UI — bez logowania." />
-        <View className="gap-2">
-          {demoProfileLinks.map((link) => (
-            <Pressable
-              key={link.title}
-              onPress={() => router.push(link.href as Href)}
-              className="active:opacity-80"
-            >
-              <GlassPanel variant="soft">
-                <View className="flex-row items-center gap-3">
-                  <Icon name={link.icon} color={colors.aqua} />
-                  <Text className="flex-1 text-body font-semibold text-text-primary">
-                    {link.title}
-                  </Text>
-                  <Icon name="chevronRight" color={colors.textMuted} size="sm" />
-                </View>
-              </GlassPanel>
-            </Pressable>
-          ))}
+        <View>
+          <SectionHeader title="Dane" />
+          <AppCard padding="none" className="overflow-hidden">
+            <ListRow
+              icon="trophy"
+              title="Dziennik PR"
+              description={`Zapisane wpisy: ${records.length}`}
+              onPress={() => router.push('/tools/records')}
+            />
+          </AppCard>
+          <Text className="mt-2 text-label text-text-muted">
+            Wszystkie dane są przechowywane lokalnie na tym urządzeniu. Aplikacja nie
+            wymaga konta.
+          </Text>
+        </View>
+
+        <View>
+          <SectionHeader title="O aplikacji" />
+          <AppCard padding="none" className="overflow-hidden">
+            <ListRow
+              icon="info"
+              title={APP_NAME}
+              description={`Wersja ${version}`}
+              showChevron={false}
+            />
+          </AppCard>
         </View>
       </View>
-    </Screen>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="items-center px-2">
-      <Text className="text-caption text-text-secondary">{label}</Text>
-      <Text className="mt-1 text-body font-semibold text-text-primary">{value}</Text>
-    </View>
+    </ScreenContainer>
   );
 }

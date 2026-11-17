@@ -1,84 +1,84 @@
-import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Fragment } from 'react';
 import { Text, View } from 'react-native';
 
-import { EmptyState, GlassPanel, MetricChip, Screen, SectionHeader } from '@/components';
+import {
+  AppCard,
+  Badge,
+  EmptyState,
+  Icon,
+  ListDivider,
+  ScreenContainer,
+  SectionHeader,
+} from '@/components';
+import { useTheme } from '@/context';
 import { demoPlans } from '@/mocks/demo';
-import { colors, radii } from '@/theme';
-
-const hero = require('../../../assets/images/immersive/hero-training.png');
 
 export function PlanDetailScreen() {
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const plan = demoPlans.find((item) => item.id === id);
 
   if (!plan) {
     return (
-      <Screen tabBarInset={false}>
+      <ScreenContainer>
         <EmptyState
-          title="Nie znaleziono planu"
-          description="Ten identyfikator nie występuje w katalogu demonstracyjnym."
+          icon="info"
+          title="Nie znaleziono programu"
+          description="Ten program nie występuje w katalogu przykładów."
+          actionLabel="Wróć do planów"
+          onActionPress={() => router.replace('/plans')}
         />
-      </Screen>
+      </ScreenContainer>
     );
   }
 
-  return (
-    <Screen tabBarInset={false}>
-      <View
-        style={{
-          borderRadius: radii.lg,
-          overflow: 'hidden',
-          height: 180,
-          marginBottom: 16,
-        }}
-      >
-        <Image source={hero} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: 16,
-            backgroundColor: colors.overlay,
-          }}
-        >
-          <Text className="text-title text-text-primary">{plan.name}</Text>
-          <Text className="mt-1 text-caption text-text-secondary">
-            {plan.duration} · {plan.level}
-          </Text>
-        </View>
-      </View>
+  const facts = [
+    { icon: 'calendar' as const, label: 'Częstotliwość', value: plan.frequency },
+    { icon: 'timer' as const, label: 'Czas sesji', value: plan.duration },
+    { icon: 'trendingUp' as const, label: 'Poziom', value: plan.level },
+  ];
 
-      <View className="mb-4 flex-row flex-wrap gap-2">
+  return (
+    <ScreenContainer title={plan.name} subtitle="Przykładowy program">
+      <View className="mb-6 flex-row flex-wrap gap-2">
         {plan.tags.map((tag) => (
-          <MetricChip
-            key={tag}
-            label={tag}
-            tone={tag === 'Siła' ? 'lilac' : 'aqua'}
-          />
+          <Badge key={tag} label={tag} tone={tag === 'Siła' ? 'lilac' : 'accent'} />
         ))}
       </View>
 
-      <SectionHeader title="Układ tygodnia" subtitle="Tylko harmonogram demonstracyjny." />
-      <View className="mb-4 flex-row flex-wrap gap-2">
+      <AppCard padding="none" className="mb-8 overflow-hidden">
+        {facts.map((fact, index) => (
+          <Fragment key={fact.label}>
+            {index > 0 ? <ListDivider /> : null}
+            <View className="min-h-[52px] flex-row items-center gap-3 px-4 py-3">
+              <Icon name={fact.icon} size="sm" color={colors.textSecondary} />
+              <Text className="flex-1 text-body text-text-secondary">{fact.label}</Text>
+              <Text className="text-body font-semibold text-text-primary">{fact.value}</Text>
+            </View>
+          </Fragment>
+        ))}
+      </AppCard>
+
+      <SectionHeader title="Układ tygodnia" />
+      <View className="mb-8 gap-2">
         {plan.days.map((slot) => (
-          <View key={`${slot.day}-${slot.label}`} style={{ width: '47%' }}>
-            <GlassPanel variant="solid">
-              <Text className="text-caption text-aqua">{slot.day}</Text>
-              <Text className="mt-1 text-body font-semibold text-text-primary">
-                {slot.label}
-              </Text>
-            </GlassPanel>
-          </View>
+          <AppCard key={`${slot.day}-${slot.label}`} padding="sm">
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-12 items-center justify-center rounded-sm bg-accent/10">
+                <Text className="text-label font-semibold text-accent">{slot.day}</Text>
+              </View>
+              <Text className="flex-1 text-card-title text-text-primary">{slot.label}</Text>
+            </View>
+          </AppCard>
         ))}
       </View>
 
       <EmptyState
-        title="Edycja pojawi się później"
-        description="Tworzenie planów, katalog ćwiczeń i lokalny zapis są zaplanowane na kolejny etap."
+        icon="info"
+        title="Szczegóły ćwiczeń wkrótce"
+        description="Lista ćwiczeń, edycja i zapisywanie planów pojawią się w kolejnym etapie."
       />
-    </Screen>
+    </ScreenContainer>
   );
 }

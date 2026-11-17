@@ -1,30 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import {
-  ErrorBanner,
-  GlassButton,
-  GlassPanel,
-  Icon,
-  Screen,
+  AppCard,
+  Button,
+  ErrorState,
+  FormField,
+  IconButton,
+  ScreenContainer,
   SectionHeader,
+  Stepper,
+  confirmAction,
+  showMessage,
 } from '@/components';
+import { useTheme } from '@/context';
 import { useIntervalTimer } from '@/hooks/useIntervalTimer';
 import {
   deleteCustomPreset,
   listAllTimerPresets,
   persistCustomPreset,
 } from '@/services/timerPresets';
-import { colors, radii, shadows } from '@/theme';
 import type { TimerPreset } from '@/types';
 import type { TimerConfig } from '@/types/timer';
 import {
+  computePlannedDurations,
   formatTimerMmSs,
   phaseDisplayName,
   validateTimerConfig,
@@ -42,6 +41,8 @@ import { ProgressRing } from './ProgressRing';
 const DEFAULT_CONFIG: TimerConfig = presetToConfig(BUILTIN_TIMER_PRESETS[0]!);
 
 export function IntervalTimerScreen() {
+  const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const [presets, setPresets] = useState<TimerPreset[]>([
     ...BUILTIN_TIMER_PRESETS,
   ]);
@@ -58,6 +59,15 @@ export function IntervalTimerScreen() {
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const [presetsError, setPresetsError] = useState<string | null>(null);
   const [presetsLoading, setPresetsLoading] = useState(true);
+  const [presetNotice, setPresetNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!presetNotice) {
+      return;
+    }
+    const id = setTimeout(() => setPresetNotice(null), 3000);
+    return () => clearTimeout(id);
+  }, [presetNotice]);
 
   const { snapshot, start, pause, resume, reset, restart, setConfig } =
     useIntervalTimer(DEFAULT_CONFIG, {
@@ -150,7 +160,7 @@ export function IntervalTimerScreen() {
     };
     const validation = validatePresetInput(input);
     if (!validation.ok) {
-      Alert.alert('Preset', validation.errors.join('\n'));
+      showMessage('Preset', validation.errors.join('\n'));
       return;
     }
 
@@ -173,9 +183,9 @@ export function IntervalTimerScreen() {
       setSelectedPresetId(preset.id);
       setEditingPresetId(null);
       setPresetName('');
-      Alert.alert('Zapisano', `Preset „${preset.name}” jest dostępny lokalnie.`);
+      setPresetNotice(`Zapisano preset „${preset.name}”.`);
     } catch {
-      Alert.alert('Błąd', 'Nie udało się zapisać presetu.');
+      showMessage('Błąd', 'Nie udało się zapisać presetu.');
     }
   };
 
@@ -188,477 +198,377 @@ export function IntervalTimerScreen() {
     setPresetName(preset.name);
   };
 
-  const removePreset = (preset: TimerPreset) => {
+  const removePreset = async (preset: TimerPreset) => {
     if (isBuiltinPresetId(preset.id)) {
       return;
     }
-    Alert.alert('Usuń preset', `Usunąć „${preset.name}”?`, [
-      { text: 'Anuluj', style: 'cancel' },
-      {
-        text: 'Usuń',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              const list = await deleteCustomPreset(preset.id);
-              setPresets(list);
-              if (selectedPresetId === preset.id) {
-                setSelectedPresetId(null);
-              }
-              if (editingPresetId === preset.id) {
-                setEditingPresetId(null);
-                setPresetName('');
-              }
-            } catch {
-              Alert.alert('Błąd', 'Nie udało się usunąć presetu.');
-            }
-          })();
-        },
-      },
-    ]);
+    const confirmed = await confirmAction({
+      title: 'Usuń preset',
+      message: `Usunąć „${preset.name}”?`,
+      confirmLabel: 'Usuń',
+      destructive: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+    try {
+      const list = await deleteCustomPreset(preset.id);
+      setPresets(list);
+      if (selectedPresetId === preset.id) {
+        setSelectedPresetId(null);
+      }
+      if (editingPresetId === preset.id) {
+        setEditingPresetId(null);
+        setPresetName('');
+      }
+    } catch {
+      showMessage('Błąd', 'Nie udało się usunąć presetu.');
+    }
   };
+
+  const plannedTotal = formatTimerMmSs(computePlannedDurations(effectiveConfig).totalMs);
+  const ringSize = Math.min(280, Math.max(200, width - 96));
 
   if (isCompleted) {
     return (
-      <Screen tabBarInset={false}>
-        <SectionHeader
-          title="Trening zakończony"
-          subtitle="Podsumowanie zaplanowanej sesji"
-        />
-        <GlassPanel variant="elevated" className="mb-4">
-          <Text className="text-caption text-aqua">Ukończone rundy</Text>
-          <Text className="mt-1 text-hero text-text-primary">
+      <ScreenContainer>
+        <AppCard variant="elevated" className="mb-6 items-center">
+          <Text className="text-label font-semibold text-success">Trening zakończony</Text>
+          <Text
+            className="mt-1 text-text-primary"
+            style={{ fontSize: 44, lineHeight: 52, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+          >
             {snapshot.completedRounds}/{snapshot.totalRounds}
           </Text>
-        </GlassPanel>
-        <View className="mb-4 gap-3">
-          <SummaryRow
-            label="Zaplanowana praca"
-            value={formatTimerMmSs(snapshot.plannedWorkMs)}
-          />
-          <SummaryRow
-            label="Zaplanowane przerwy"
-            value={formatTimerMmSs(snapshot.plannedRestMs)}
-          />
+          <Text className="text-body text-text-secondary">ukończonych rund</Text>
+        </AppCard>
+
+        <AppCard padding="none" className="mb-3 overflow-hidden">
+          <SummaryRow label="Zaplanowana praca" value={formatTimerMmSs(snapshot.plannedWorkMs)} />
+          <SummaryRow label="Zaplanowane przerwy" value={formatTimerMmSs(snapshot.plannedRestMs)} />
           {snapshot.plannedWarmupMs > 0 ? (
-            <SummaryRow
-              label="Przygotowanie"
-              value={formatTimerMmSs(snapshot.plannedWarmupMs)}
-            />
+            <SummaryRow label="Przygotowanie" value={formatTimerMmSs(snapshot.plannedWarmupMs)} />
           ) : null}
-          <SummaryRow
-            label="Łączny czas sesji"
-            value={formatTimerMmSs(snapshot.totalSessionMs)}
-          />
-        </View>
-        <Text className="mb-4 text-caption text-text-secondary">
-          Czasy powyżej to plan treningu, nie pomiar faktycznie odbytej pracy przy
-          wcześniejszym przerwaniu.
+          <SummaryRow label="Łączny czas sesji" value={formatTimerMmSs(snapshot.totalSessionMs)} last />
+        </AppCard>
+        <Text className="mb-6 text-label text-text-muted">
+          Czasy powyżej to plan treningu, a nie pomiar faktycznie wykonanej pracy.
         </Text>
         <View className="gap-3">
-          <GlassButton label="Uruchom ponownie" onPress={() => restart()} />
-          <GlassButton
-            label="Wróć do konfiguracji"
-            variant="secondary"
-            onPress={() => reset()}
-          />
+          <Button label="Uruchom ponownie" icon="refresh" onPress={() => restart()} />
+          <Button label="Wróć do ustawień" variant="secondary" onPress={() => reset()} />
         </View>
-      </Screen>
+      </ScreenContainer>
     );
   }
 
   if (isActive) {
+    const paused = snapshot.status === 'paused';
     const roundLabel =
       snapshot.phase === 'preparation'
         ? 'Przed startem'
-        : `Runda ${snapshot.currentRound}/${snapshot.totalRounds}`;
+        : `Runda ${snapshot.currentRound} z ${snapshot.totalRounds}`;
 
     return (
-      <Screen tabBarInset={false}>
-        <SectionHeader
-          title="Timer interwałowy"
-          subtitle={
-            snapshot.status === 'paused' ? 'Wstrzymano' : 'Sesja w toku'
-          }
-        />
-
-        <View className="mb-6 items-center">
+      <ScreenContainer contentStyle={{ justifyContent: 'center' }}>
+        <View className="items-center">
           <ProgressRing
+            size={ringSize}
             progress={snapshot.phaseProgress}
             phase={snapshot.phase}
-            label={phaseDisplayName(snapshot.phase)}
+            label={paused ? 'Wstrzymano' : phaseDisplayName(snapshot.phase)}
             timeLabel={formatTimerMmSs(snapshot.remainingMs)}
             subtitle={roundLabel}
           />
+          {snapshot.nextPhaseLabel ? (
+            <Text className="mt-4 text-body text-text-secondary">
+              Dalej: <Text className="font-semibold text-text-primary">{snapshot.nextPhaseLabel}</Text>
+            </Text>
+          ) : null}
         </View>
 
-        {snapshot.nextPhaseLabel ? (
-          <GlassPanel variant="soft" className="mb-6">
-            <Text className="text-center text-caption text-text-secondary">
-              Następna faza
-            </Text>
-            <Text className="mt-1 text-center text-body font-semibold text-text-primary">
-              {snapshot.nextPhaseLabel}
-            </Text>
-          </GlassPanel>
-        ) : null}
-
-        <View className="flex-row items-center justify-center gap-8">
-          <ControlButton
-            icon="rotateCcw"
-            label="Reset"
-            onPress={() => reset()}
-          />
-          <Pressable
-            onPress={() => {
-              if (snapshot.status === 'paused') {
-                resume();
-              } else {
-                pause();
-              }
-            }}
-            style={[
-              {
-                width: 76,
-                height: 76,
-                borderRadius: 38,
-                backgroundColor: colors.aqua,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-              shadows.softGlow,
-            ]}
-          >
-            <Icon
-              name={snapshot.status === 'paused' ? 'play' : 'pause'}
-              color={colors.deepWater}
-              size="lg"
+        <View className="mt-8 flex-row items-center justify-center gap-8">
+          <View className="items-center">
+            <IconButton
+              icon="rotateCcw"
+              size={48}
+              accessibilityLabel="Zakończ i zresetuj sesję"
+              onPress={() => {
+                void (async () => {
+                  const confirmed = await confirmAction({
+                    title: 'Zakończyć sesję?',
+                    message: 'Licznik wróci do ustawień początkowych.',
+                    confirmLabel: 'Zakończ',
+                    destructive: true,
+                  });
+                  if (confirmed) reset();
+                })();
+              }}
             />
-          </Pressable>
-          <View style={{ width: 64 }} />
+            <Text className="mt-1.5 text-label text-text-secondary">Reset</Text>
+          </View>
+          <View className="items-center">
+            <IconButton
+              icon={paused ? 'play' : 'pause'}
+              variant="accent"
+              size={72}
+              accessibilityLabel={paused ? 'Wznów' : 'Wstrzymaj'}
+              onPress={() => (paused ? resume() : pause())}
+            />
+            <Text className="mt-1.5 text-label font-semibold text-text-primary">
+              {paused ? 'Wznów' : 'Pauza'}
+            </Text>
+          </View>
+          {/* Keeps the main control centred. */}
+          <View style={{ width: 48 }} />
         </View>
-        <Text className="mt-4 text-center text-caption text-text-muted">
+
+        <Text className="mt-8 text-center text-label text-text-muted">
           Sygnały działają przy otwartej aplikacji — nie są alarmami w tle.
         </Text>
-      </Screen>
+      </ScreenContainer>
     );
   }
 
   return (
-    <Screen tabBarInset={false}>
-      <SectionHeader
-        title="Timer interwałowy"
-        subtitle="Konfiguracja rund, przerw i presetów"
-      />
-
-      {presetsError ? (
-        <View className="mb-3">
-          <ErrorBanner message={presetsError} />
-        </View>
-      ) : null}
-
-      <SectionHeader title="Presety" />
-      <View className="mb-4 flex-row flex-wrap gap-2">
-        {presets.map((preset) => {
-          const active = selectedPresetId === preset.id;
-          const builtin = isBuiltinPresetId(preset.id);
-          return (
-            <View key={preset.id} style={{ width: '48%' }}>
-              <Pressable
-                onPress={() => loadPreset(preset)}
-                onLongPress={() => {
-                  if (!builtin) {
-                    beginEditPreset(preset);
-                  }
-                }}
-                style={{
-                  borderRadius: radii.md,
-                  borderWidth: 1,
-                  borderColor: active ? colors.aqua : colors.glassBorder,
-                  backgroundColor: active ? colors.activeGlow : colors.glassFill,
-                  padding: 12,
-                  minHeight: 72,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.aqua : colors.textPrimary,
-                    fontWeight: '700',
-                    fontSize: 14,
-                  }}
-                  numberOfLines={1}
-                >
-                  {preset.name}
-                </Text>
-                <Text className="mt-1 text-caption text-text-secondary">
-                  {preset.workSeconds}s / {preset.restSeconds}s · {preset.rounds}r
-                </Text>
-                {!builtin ? (
-                  <View className="mt-2 flex-row gap-3">
-                    <Pressable
-                      onPress={() => beginEditPreset(preset)}
-                      hitSlop={8}
-                    >
-                      <Text className="text-caption text-aqua">Edytuj</Text>
-                    </Pressable>
-                    <Pressable onPress={() => removePreset(preset)} hitSlop={8}>
-                      <Text style={{ color: colors.danger, fontSize: 13 }}>
-                        Usuń
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Text className="mt-2 text-caption text-text-muted">
-                    Wbudowany
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          );
-        })}
-      </View>
-      {presetsLoading ? (
-        <Text className="mb-3 text-caption text-text-secondary">
-          Ładowanie presetów…
+    <ScreenContainer>
+      {/* Summary + start first: the main action is reachable without scrolling. */}
+      <AppCard variant="elevated" className="mb-8">
+        <Text className="text-label text-text-secondary">Sesja</Text>
+        <Text className="mt-0.5 text-card-title text-text-primary">
+          {draft.rounds} × {draft.workSeconds} s pracy / {draft.restSeconds} s przerwy
         </Text>
-      ) : null}
-
-      <View className="mb-4 gap-3">
-        <StepperField
-          label="Praca (s)"
-          value={draft.workSeconds}
-          onDecrement={() => bump('workSeconds', -5, 5)}
-          onIncrement={() => bump('workSeconds', 5, 5)}
-        />
-        <StepperField
-          label="Przerwa (s)"
-          value={draft.restSeconds}
-          onDecrement={() => bump('restSeconds', -5, 0)}
-          onIncrement={() => bump('restSeconds', 5, 0)}
-        />
-        <StepperField
-          label="Rundy"
-          value={draft.rounds}
-          onDecrement={() => bump('rounds', -1, 1)}
-          onIncrement={() => bump('rounds', 1, 1)}
-        />
-      </View>
-
-      <GlassPanel variant="soft" className="mb-3">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-body text-text-primary">Przygotowanie</Text>
-          <ToggleChip
-            active={warmupEnabled}
-            label={warmupEnabled ? 'Wł.' : 'Wył.'}
-            onPress={() => {
-              setSelectedPresetId(null);
-              setWarmupEnabled((v) => {
-                const next = !v;
-                if (next) {
-                  setDraft((prev) => ({
-                    ...prev,
-                    warmupSeconds: prev.warmupSeconds > 0 ? prev.warmupSeconds : 5,
-                  }));
-                }
-                return next;
-              });
-            }}
+        <Text className="mt-0.5 text-label text-text-secondary">
+          Łącznie ok. {plannedTotal}
+          {warmupEnabled ? ` · z przygotowaniem ${Math.max(5, draft.warmupSeconds || 5)} s` : ''}
+        </Text>
+        {!configValidation.ok ? (
+          <View className="mt-3">
+            <ErrorState message={configValidation.errors[0]!} />
+          </View>
+        ) : null}
+        <View className="mt-4">
+          <Button
+            label="Start"
+            icon="play"
+            onPress={handleStart}
+            disabled={!configValidation.ok}
           />
         </View>
-        {warmupEnabled ? (
-          <View className="mt-3">
-            <StepperField
-              label="Czas przygotowania (s)"
-              value={Math.max(5, draft.warmupSeconds || 5)}
-              onDecrement={() => bump('warmupSeconds', -5, 5)}
-              onIncrement={() => bump('warmupSeconds', 5, 5)}
+      </AppCard>
+
+      <View className="mb-8">
+        <SectionHeader title="Presety" />
+        {presetsError ? (
+          <View className="mb-3">
+            <ErrorState
+              message={presetsError}
+              actionLabel="Spróbuj ponownie"
+              onActionPress={() => void reloadPresets()}
             />
           </View>
         ) : null}
-      </GlassPanel>
+        <View className="flex-row flex-wrap" style={{ marginHorizontal: -5 }}>
+          {presets.map((preset) => {
+            const active = selectedPresetId === preset.id;
+            const builtin = isBuiltinPresetId(preset.id);
+            return (
+              <View key={preset.id} style={{ width: '50%', padding: 5 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`Preset ${preset.name}: ${preset.workSeconds} sekund pracy, ${preset.restSeconds} sekund przerwy, ${preset.rounds} rund`}
+                  onPress={() => loadPreset(preset)}
+                  onLongPress={() => {
+                    if (!builtin) beginEditPreset(preset);
+                  }}
+                  className={`min-h-[64px] rounded-md border p-3 ${
+                    active ? 'border-accent bg-accent/10' : 'border-border bg-surface active:bg-surface-elevated'
+                  }`}
+                >
+                  <Text
+                    numberOfLines={1}
+                    className={`text-body font-semibold ${active ? 'text-accent' : 'text-text-primary'}`}
+                  >
+                    {preset.name}
+                  </Text>
+                  <Text className="mt-0.5 text-label text-text-secondary">
+                    {preset.workSeconds}/{preset.restSeconds} s · {preset.rounds} r.
+                  </Text>
+                </Pressable>
+                {!builtin ? (
+                  <View className="mt-1 flex-row justify-end gap-1">
+                    <IconButton
+                      icon="pencil"
+                      variant="plain"
+                      accessibilityLabel={`Edytuj preset ${preset.name}`}
+                      onPress={() => beginEditPreset(preset)}
+                    />
+                    <IconButton
+                      icon="trash"
+                      variant="plain"
+                      accessibilityLabel={`Usuń preset ${preset.name}`}
+                      onPress={() => void removePreset(preset)}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+        {presetsLoading ? (
+          <Text className="mt-2 text-label text-text-secondary">Ładowanie presetów…</Text>
+        ) : null}
+      </View>
 
-      <GlassPanel variant="soft" className="mb-4">
-        <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-body text-text-primary">Sygnały haptyczne</Text>
-          <ToggleChip
-            active={cuesEnabled}
-            label={cuesEnabled ? 'Wł.' : 'Wył.'}
-            onPress={() => setCuesEnabled((v) => !v)}
+      <View className="mb-8">
+        <SectionHeader title="Ustawienia" />
+        <View className="gap-3">
+          <Stepper
+            label="Praca"
+            value={draft.workSeconds}
+            unit="s"
+            onDecrement={() => bump('workSeconds', -5, 5)}
+            onIncrement={() => bump('workSeconds', 5, 5)}
+            decrementDisabled={draft.workSeconds <= 5}
+          />
+          <Stepper
+            label="Przerwa"
+            value={draft.restSeconds}
+            unit="s"
+            onDecrement={() => bump('restSeconds', -5, 0)}
+            onIncrement={() => bump('restSeconds', 5, 0)}
+            decrementDisabled={draft.restSeconds <= 0}
+          />
+          <Stepper
+            label="Rundy"
+            value={draft.rounds}
+            onDecrement={() => bump('rounds', -1, 1)}
+            onIncrement={() => bump('rounds', 1, 1)}
+            decrementDisabled={draft.rounds <= 1}
           />
         </View>
-        <View className="flex-row items-center justify-between">
-          <Text className="text-caption text-text-secondary">
-            Odliczanie ostatnich 3 s
-          </Text>
-          <ToggleChip
-            active={countdownCues}
-            label={countdownCues ? 'Wł.' : 'Wył.'}
-            onPress={() => setCountdownCues((v) => !v)}
-          />
-        </View>
-      </GlassPanel>
+      </View>
 
-      <GlassPanel variant="solid" className="mb-4">
-        <Text className="mb-2 text-caption text-text-secondary">
-          {editingPresetId ? 'Edytuj preset' : 'Zapisz jako własny preset'}
-        </Text>
-        <TextInput
-          value={presetName}
-          onChangeText={setPresetName}
-          placeholder="Nazwa, np. Obwód A"
-          placeholderTextColor={colors.textMuted}
-          style={{
-            color: colors.textPrimary,
-            fontSize: 16,
-            fontWeight: '600',
-            paddingVertical: 6,
-          }}
-        />
-        <View className="mt-3 flex-row gap-2">
-          <View className="flex-1">
-            <GlassButton
-              label={editingPresetId ? 'Zapisz zmiany' : 'Zapisz preset'}
-              size="sm"
-              onPress={() => void savePreset()}
-            />
-          </View>
-          {editingPresetId ? (
-            <View className="flex-1">
-              <GlassButton
-                label="Anuluj"
-                size="sm"
-                variant="secondary"
-                onPress={() => {
-                  setEditingPresetId(null);
-                  setPresetName('');
-                }}
+      <View className="mb-8">
+        <SectionHeader title="Opcje" />
+        <AppCard padding="none" className="overflow-hidden">
+          <SwitchRow
+            label="Odliczanie przed startem"
+            value={warmupEnabled}
+            onValueChange={(next) => {
+              setSelectedPresetId(null);
+              if (next) {
+                setDraft((prev) => ({
+                  ...prev,
+                  warmupSeconds: prev.warmupSeconds > 0 ? prev.warmupSeconds : 5,
+                }));
+              }
+              setWarmupEnabled(next);
+            }}
+          />
+          {warmupEnabled ? (
+            <View className="px-3 pb-3">
+              <Stepper
+                label="Czas przygotowania"
+                value={Math.max(5, draft.warmupSeconds || 5)}
+                unit="s"
+                onDecrement={() => bump('warmupSeconds', -5, 5)}
+                onIncrement={() => bump('warmupSeconds', 5, 5)}
+                decrementDisabled={draft.warmupSeconds <= 5}
               />
             </View>
           ) : null}
-        </View>
-      </GlassPanel>
-
-      {!configValidation.ok ? (
-        <View className="mb-3">
-          <ErrorBanner message={configValidation.errors[0]!} />
-        </View>
-      ) : null}
-
-      <GlassButton
-        label="Start"
-        onPress={handleStart}
-        disabled={!configValidation.ok}
-      />
-      <Text className="mt-3 text-center text-caption text-text-muted">
-        Po ostatniej rundzie trening kończy się bez dodatkowej przerwy.
-      </Text>
-    </Screen>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <GlassPanel variant="soft">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-caption text-text-secondary">{label}</Text>
-        <Text className="text-body font-semibold text-text-primary">{value}</Text>
+          <View className="ml-4 h-px bg-border" />
+          <SwitchRow label="Sygnały haptyczne" value={cuesEnabled} onValueChange={setCuesEnabled} />
+          <View className="ml-4 h-px bg-border" />
+          <SwitchRow
+            label="Odliczanie ostatnich 3 s"
+            value={countdownCues}
+            onValueChange={setCountdownCues}
+          />
+        </AppCard>
       </View>
-    </GlassPanel>
+
+      <View>
+        <SectionHeader title={editingPresetId ? 'Edytuj preset' : 'Zapisz jako preset'} />
+        <AppCard>
+          <FormField
+            label="Nazwa presetu"
+            value={presetName}
+            onChangeText={setPresetName}
+            placeholder="np. Obwód A"
+            returnKeyType="done"
+            onSubmitEditing={() => void savePreset()}
+          />
+          {presetNotice ? (
+            <Text accessibilityLiveRegion="polite" className="mt-2 text-label text-success">
+              {presetNotice}
+            </Text>
+          ) : null}
+          <View className="mt-3 flex-row gap-3">
+            <View className="flex-1">
+              <Button
+                label={editingPresetId ? 'Zapisz zmiany' : 'Zapisz preset'}
+                variant="secondary"
+                onPress={() => void savePreset()}
+              />
+            </View>
+            {editingPresetId ? (
+              <View className="flex-1">
+                <Button
+                  label="Anuluj"
+                  variant="ghost"
+                  onPress={() => {
+                    setEditingPresetId(null);
+                    setPresetName('');
+                  }}
+                />
+              </View>
+            ) : null}
+          </View>
+        </AppCard>
+      </View>
+    </ScreenContainer>
   );
 }
 
-function StepperField({
+function SummaryRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View
+      className={`min-h-[52px] flex-row items-center justify-between px-4 py-3 ${
+        last ? '' : 'border-b border-border'
+      }`}
+    >
+      <Text className="text-body text-text-secondary">{label}</Text>
+      <Text className="text-body font-semibold text-text-primary" style={{ fontVariant: ['tabular-nums'] }}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function SwitchRow({
   label,
   value,
-  onDecrement,
-  onIncrement,
+  onValueChange,
 }: {
   label: string;
-  value: number;
-  onDecrement: () => void;
-  onIncrement: () => void;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
 }) {
+  const { colors } = useTheme();
   return (
-    <GlassPanel variant="solid">
-      <Text className="mb-2 text-caption text-text-secondary">{label}</Text>
-      <View className="flex-row items-center justify-between">
-        <Pressable onPress={onDecrement} style={chipStyle} hitSlop={8}>
-          <Icon name="minus" color={colors.aqua} size="sm" />
-        </Pressable>
-        <Text className="text-title text-text-primary">{value}</Text>
-        <Pressable onPress={onIncrement} style={chipStyle} hitSlop={8}>
-          <Icon name="plus" color={colors.aqua} size="sm" />
-        </Pressable>
-      </View>
-    </GlassPanel>
+    <View className="min-h-[56px] flex-row items-center gap-3 px-4 py-2">
+      <Text className="flex-1 text-body text-text-primary">{label}</Text>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: colors.border, true: colors.accent }}
+        thumbColor={colors.surface}
+        ios_backgroundColor={colors.border}
+      />
+    </View>
   );
 }
-
-function ToggleChip({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        borderRadius: radii.pill,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderWidth: 1,
-        borderColor: active ? colors.aqua : colors.glassBorder,
-        backgroundColor: active ? colors.activeGlow : colors.glassFill,
-      }}
-    >
-      <Text style={{ color: active ? colors.aqua : colors.textSecondary, fontWeight: '600', fontSize: 13 }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function ControlButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: 'rotateCcw';
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} className="items-center">
-      <View
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: radii.pill,
-          borderWidth: 1,
-          borderColor: colors.glassBorder,
-          backgroundColor: colors.glassFill,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name={icon} color={colors.textSecondary} />
-      </View>
-      <Text className="mt-2 text-caption text-text-secondary">{label}</Text>
-    </Pressable>
-  );
-}
-
-const chipStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: radii.pill,
-  borderWidth: 1,
-  borderColor: colors.glassBorder,
-  backgroundColor: colors.glassFill,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};

@@ -1,7 +1,8 @@
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import { colors, shadows } from '@/theme';
+import { useTheme } from '@/context';
+import type { ColorPalette } from '@/theme';
 import type { TimerPhase } from '@/types/timer';
 
 interface ProgressRingProps {
@@ -14,23 +15,24 @@ interface ProgressRingProps {
   subtitle?: string;
 }
 
-function phaseColor(phase: TimerPhase): string {
+export function phaseColor(phase: TimerPhase, colors: ColorPalette): string {
   switch (phase) {
     case 'work':
-      return colors.aqua;
+      return colors.accent;
     case 'rest':
       return colors.lilac;
     case 'preparation':
-      return colors.liquidMint;
+      return colors.mint;
     case 'completed':
-      return colors.acidLime;
+      return colors.success;
     default:
-      return colors.glassBorder;
+      return colors.border;
   }
 }
 
+/** Phase ring: phase name → large countdown → round, all inside the ring. */
 export function ProgressRing({
-  size = 240,
+  size = 260,
   strokeWidth = 10,
   progress,
   phase,
@@ -38,30 +40,27 @@ export function ProgressRing({
   timeLabel,
   subtitle,
 }: ProgressRingProps) {
+  const { colors } = useTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.min(1, Math.max(0, progress));
   const strokeDashoffset = circumference * (1 - clamped);
-  const accent = phaseColor(phase);
+  const accent = phaseColor(phase, colors);
+  const timeFontSize = Math.round(size * 0.23);
 
   return (
     <View
-      style={[
-        {
-          width: size,
-          height: size,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        phase === 'work' ? shadows.softGlow : null,
-      ]}
+      accessible
+      accessibilityRole="timer"
+      accessibilityLabel={`${label}. Pozostało ${timeLabel}. ${subtitle ?? ''}`}
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
     >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.glassBorder}
+          stroke={colors.surfaceElevated}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -78,15 +77,19 @@ export function ProgressRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <Text style={{ color: accent, fontSize: 13, fontWeight: '700' }}>
-        {label}
+      <Text
+        style={{ color: accent, fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}
+        allowFontScaling={false}
+      >
+        {label.toUpperCase()}
       </Text>
       <Text
+        allowFontScaling={false}
         style={{
           color: colors.textPrimary,
-          fontSize: 44,
+          fontSize: timeFontSize,
+          lineHeight: timeFontSize * 1.15,
           fontWeight: '700',
-          marginTop: 4,
           fontVariant: ['tabular-nums'],
         }}
       >
@@ -94,13 +97,8 @@ export function ProgressRing({
       </Text>
       {subtitle ? (
         <Text
-          style={{
-            color: colors.textSecondary,
-            fontSize: 13,
-            marginTop: 4,
-            textAlign: 'center',
-            paddingHorizontal: 16,
-          }}
+          style={{ color: colors.textSecondary, fontSize: 15, fontWeight: '500' }}
+          allowFontScaling={false}
         >
           {subtitle}
         </Text>

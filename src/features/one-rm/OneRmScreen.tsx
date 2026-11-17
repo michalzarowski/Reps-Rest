@@ -1,199 +1,168 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { GlassPanel, Icon, Screen, SectionHeader } from '@/components';
-import { colors, radii } from '@/theme';
+import {
+  AppCard,
+  ErrorState,
+  FormField,
+  IconButton,
+  ScreenContainer,
+  SectionHeader,
+  SegmentedControl,
+} from '@/components';
 import type { OneRmFormula } from '@/types';
 import {
-  ONE_RM_FORMULAS,
   buildIntensityGuide,
   estimateOneRm,
+  formatKg,
+  parseNonNegativeInteger,
+  parsePositiveNumber,
   validateOneRmInput,
 } from '@/utils';
 
-import { IntensityChart } from './IntensityChart';
+import { IntensityTable } from './IntensityTable';
+
+const FORMULA_OPTIONS = [
+  { value: 'epley', label: 'Epley' },
+  { value: 'brzycki', label: 'Brzycki' },
+] as const satisfies readonly { value: OneRmFormula; label: string }[];
+
+const WEIGHT_STEP = 2.5;
 
 export function OneRmScreen() {
-  const [weightKg, setWeightKg] = useState(100);
-  const [reps, setReps] = useState(5);
+  const [weightText, setWeightText] = useState('100');
+  const [repsText, setRepsText] = useState('5');
   const [formula, setFormula] = useState<OneRmFormula>('epley');
+
+  // Unparseable input maps to 0 so the existing validator reports the error.
+  const weightKg = parsePositiveNumber(weightText) ?? 0;
+  const reps = parseNonNegativeInteger(repsText) ?? 0;
 
   const validation = useMemo(
     () => validateOneRmInput({ weightKg, reps, formula }),
     [weightKg, reps, formula],
   );
   const estimated1Rm = useMemo(
-    () => estimateOneRm({ weightKg, reps, formula }),
-    [weightKg, reps, formula],
+    () => (validation.ok ? estimateOneRm({ weightKg, reps, formula }) : null),
+    [validation.ok, weightKg, reps, formula],
   );
   const intensityRows = useMemo(
     () => (estimated1Rm == null ? [] : buildIntensityGuide(estimated1Rm)),
     [estimated1Rm],
   );
 
+  const stepWeight = (delta: number) => {
+    const next = Math.max(0, weightKg + delta);
+    setWeightText(formatKg(next));
+  };
+  const stepReps = (delta: number) => {
+    setRepsText(String(Math.max(0, reps + delta)));
+  };
+
   return (
-    <Screen tabBarInset={false}>
-      <SectionHeader
-        title="Kalkulator 1RM"
-        subtitle="Oszacuj 1RM wzorem Epleya lub Brzyckiego"
-      />
-
-      <View className="mb-3 flex-row gap-2">
-        {ONE_RM_FORMULAS.map((item) => {
-          const active = item === formula;
-          return (
-            <Pressable
-              key={item}
-              onPress={() => setFormula(item)}
-              style={{
-                flex: 1,
-                borderRadius: radii.pill,
-                paddingVertical: 10,
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: active ? colors.aqua : colors.glassBorder,
-                backgroundColor: active ? colors.activeGlow : colors.glassFill,
-              }}
-            >
-              <Text
-                style={{
-                  color: active ? colors.aqua : colors.textSecondary,
-                  fontWeight: "600",
-                  textTransform: "capitalize",
-                }}
-              >
-                {item}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View className="mb-4 gap-3">
-        <StepperField
-          label="Ciężar (kg)"
-          value={weightKg}
-          onDecrement={() => setWeightKg((w) => Math.max(0, w - 2.5))}
-          onIncrement={() => setWeightKg((w) => w + 2.5)}
-        />
-        <StepperField
-          label="Powtórzenia"
-          value={reps}
-          onDecrement={() => setReps((r) => Math.max(0, r - 1))}
-          onIncrement={() => setReps((r) => r + 1)}
-        />
-      </View>
-
-      {!validation.ok && validation.errors.length > 0 ? (
-        <Text className="mb-3 text-caption text-text-secondary">
-          {validation.errors.join(' · ')}
-        </Text>
-      ) : null}
-
-      {validation.ok && validation.warnings.length > 0 ? (
-        <Text className="mb-3 text-caption text-lilac">
-          {validation.warnings.join(' · ')}
-        </Text>
-      ) : null}
-
-      <View
-        style={{
-          borderRadius: radii.lg,
-          overflow: "hidden",
-          marginBottom: 20,
-          borderWidth: 1,
-          borderColor: colors.glassBorder,
-        }}
-      >
-        <LinearGradient
-          colors={[colors.aquaGlow, "transparent"]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={{ padding: 24, alignItems: "center" }}
-        >
-          <Text className="text-caption font-semibold text-aqua">
-            Szacowane 1RM
-          </Text>
-          <Text className="mt-2 text-hero text-text-primary">
-            {estimated1Rm == null ? "—" : `${estimated1Rm.toFixed(1)} kg`}
-          </Text>
-          <Text className="mt-2 text-center text-caption text-text-secondary">
-            To estymacja, nie wynik testu maksymalnego.
-          </Text>
-        </LinearGradient>
-      </View>
-
-      <SectionHeader title="Przewodnik intensywności" />
-      <IntensityChart rows={intensityRows} />
-      <GlassPanel variant="soft">
-        {intensityRows.length === 0 ? (
-          <Text className="text-caption text-text-secondary">
-            Brak wierszy intensywności.
-          </Text>
-        ) : (
-          intensityRows.map((row, index) => (
-            <View
-              key={row.pct}
-              className="flex-row items-center justify-between py-2.5"
-              style={
-                index < intensityRows.length - 1
-                  ? {
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.glassBorder,
-                    }
-                  : undefined
-              }
-            >
-              <Text className="text-caption text-aqua">{row.pct}%</Text>
-              <Text className="text-body text-text-primary">
-                {row.weightKg} kg
-              </Text>
-              <Text className="text-caption text-text-secondary">
-                {row.repsHint}
-              </Text>
+    <ScreenContainer>
+      <View className="gap-4">
+        <FormField
+          label="Ciężar"
+          value={weightText}
+          onChangeText={setWeightText}
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+          size="lg"
+          selectTextOnFocus
+          trailing={
+            <View className="flex-row items-center gap-2">
+              <Text className="text-body text-text-secondary">kg</Text>
+              <IconButton
+                icon="minus"
+                accessibilityLabel="Zmniejsz ciężar o 2,5 kg"
+                onPress={() => stepWeight(-WEIGHT_STEP)}
+                disabled={weightKg <= 0}
+              />
+              <IconButton
+                icon="plus"
+                accessibilityLabel="Zwiększ ciężar o 2,5 kg"
+                onPress={() => stepWeight(WEIGHT_STEP)}
+              />
             </View>
-          ))
-        )}
-      </GlassPanel>
-    </Screen>
-  );
-}
-
-function StepperField({
-  label,
-  value,
-  onDecrement,
-  onIncrement,
-}: {
-  label: string;
-  value: number;
-  onDecrement: () => void;
-  onIncrement: () => void;
-}) {
-  return (
-    <GlassPanel variant="solid">
-      <Text className="mb-2 text-caption text-text-secondary">{label}</Text>
-      <View className="flex-row items-center justify-between">
-        <Pressable onPress={onDecrement} style={chipStyle} hitSlop={8}>
-          <Icon name="minus" color={colors.aqua} size="sm" />
-        </Pressable>
-        <Text className="text-title text-text-primary">{value}</Text>
-        <Pressable onPress={onIncrement} style={chipStyle} hitSlop={8}>
-          <Icon name="plus" color={colors.aqua} size="sm" />
-        </Pressable>
+          }
+        />
+        <FormField
+          label="Powtórzenia"
+          value={repsText}
+          onChangeText={setRepsText}
+          keyboardType="number-pad"
+          inputMode="numeric"
+          size="lg"
+          selectTextOnFocus
+          trailing={
+            <View className="flex-row items-center gap-2">
+              <IconButton
+                icon="minus"
+                accessibilityLabel="Zmniejsz liczbę powtórzeń"
+                onPress={() => stepReps(-1)}
+                disabled={reps <= 1}
+              />
+              <IconButton
+                icon="plus"
+                accessibilityLabel="Zwiększ liczbę powtórzeń"
+                onPress={() => stepReps(1)}
+              />
+            </View>
+          }
+        />
+        <View>
+          <Text className="mb-1.5 text-label font-medium text-text-secondary">Wzór</Text>
+          <SegmentedControl
+            accessibilityLabel="Wzór szacowania"
+            options={FORMULA_OPTIONS}
+            value={formula}
+            onChange={setFormula}
+          />
+        </View>
       </View>
-    </GlassPanel>
+
+      <View className="mb-8 mt-6">
+        {!validation.ok ? (
+          <ErrorState
+            message={validation.errors[0] ?? 'Sprawdź dane wejściowe'}
+            details={validation.errors.slice(1)}
+          />
+        ) : (
+          <AppCard variant="elevated">
+            <Text className="text-label font-semibold text-accent">Szacowane 1RM</Text>
+            <Text
+              accessibilityLiveRegion="polite"
+              className="mt-1 text-text-primary"
+              style={{ fontSize: 44, lineHeight: 52, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+            >
+              {estimated1Rm == null ? '—' : `${formatKg(estimated1Rm, 1)} kg`}
+            </Text>
+            <Text className="mt-1 text-body text-text-secondary">
+              Tyle prawdopodobnie podniesiesz na 1 powtórzenie, skoro {formatKg(weightKg)} kg
+              robisz {reps}× (wzór {formula === 'epley' ? 'Epleya' : 'Brzyckiego'}).
+            </Text>
+            {validation.warnings.length > 0 ? (
+              <Text className="mt-3 text-label text-warning">
+                {validation.warnings.join(' · ')}
+              </Text>
+            ) : null}
+            <Text className="mt-3 text-label text-text-muted">
+              To estymacja, nie wynik testu maksymalnego.
+            </Text>
+          </AppCard>
+        )}
+      </View>
+
+      {intensityRows.length > 0 ? (
+        <View>
+          <SectionHeader
+            title="Obciążenia robocze"
+            subtitle="Procent szacowanego 1RM i typowy zakres powtórzeń"
+          />
+          <IntensityTable rows={intensityRows} />
+        </View>
+      ) : null}
+    </ScreenContainer>
   );
 }
-
-const chipStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: radii.pill,
-  borderWidth: 1,
-  borderColor: colors.glassBorder,
-  backgroundColor: colors.glassFill,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-};

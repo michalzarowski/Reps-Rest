@@ -1,20 +1,19 @@
-import { useMemo, useState } from 'react';
-import {
-  Pressable,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
+import { Fragment, useMemo, useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
 
 import {
-  ErrorBanner,
-  GlassPanel,
-  Icon,
-  Screen,
+  AppCard,
+  Button,
+  ErrorState,
+  FormField,
+  IconButton,
+  ListDivider,
+  ScreenContainer,
   SectionHeader,
+  SegmentedControl,
 } from '@/components';
-import { colors, radii } from '@/theme';
+import { useTheme } from '@/context';
+import type { ColorPalette } from '@/theme';
 import type { PlateConverterMode, PlateCount } from '@/types';
 import {
   DEFAULT_BAR_WEIGHT_KG,
@@ -29,55 +28,56 @@ import {
 
 type BarPreset = 20 | 15 | 'custom';
 
-function plateVisualWidth(plateKg: number): number {
-  const min = 22;
-  const max = 48;
+const MODE_OPTIONS = [
+  { value: 'target-to-plates', label: 'Ciężar → talerze' },
+  { value: 'plates-to-target', label: 'Talerze → ciężar' },
+] as const satisfies readonly { value: PlateConverterMode; label: string }[];
+
+const BAR_OPTIONS: readonly { value: BarPreset; label: string }[] = [
+  ...STANDARD_BAR_OPTIONS_KG.map((kg) => ({ value: kg as 20 | 15, label: `${kg} kg` })),
+  { value: 'custom', label: 'Inny' },
+];
+
+/** Plate height in the barbell drawing, proportional to plate mass. */
+function plateHeight(plateKg: number): number {
   const clamped = Math.min(25, Math.max(1.25, plateKg));
-  return min + ((clamped - 1.25) / (25 - 1.25)) * (max - min);
+  return 36 + ((clamped - 1.25) / (25 - 1.25)) * 64;
 }
 
-function plateVisualColor(plateKg: number): string {
-  if (plateKg >= 25) return colors.aqua;
-  if (plateKg >= 20) return colors.liquidMint;
+function plateColor(plateKg: number, colors: ColorPalette): string {
+  if (plateKg >= 25) return colors.accent;
+  if (plateKg >= 20) return colors.mint;
   if (plateKg >= 15) return colors.lilac;
-  if (plateKg >= 10) return colors.acidLime;
-  if (plateKg >= 5) return colors.aqua;
-  return colors.textSecondary;
+  if (plateKg >= 10) return colors.lime;
+  if (plateKg >= 5) return colors.textSecondary;
+  return colors.textMuted;
 }
+
+type TargetResult =
+  | ReturnType<typeof solveTargetToPlates>
+  | { ok: false; errors: string[]; solution: null; nearest: null; message: string | null };
 
 export function PlateCalculatorScreen() {
   const [mode, setMode] = useState<PlateConverterMode>('target-to-plates');
   const [targetText, setTargetText] = useState('100');
-  const [barPreset, setBarPreset] = useState<BarPreset>(DEFAULT_BAR_WEIGHT_KG);
+  const [barPreset, setBarPreset] = useState<BarPreset>(DEFAULT_BAR_WEIGHT_KG as 20);
   const [customBarText, setCustomBarText] = useState('20');
   const [plateCounts, setPlateCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(STANDARD_PLATES_KG.map((p) => [p, 0])),
   );
 
-  const barKg = useMemo(() => {
-    if (barPreset === 'custom') {
-      return parsePositiveNumber(customBarText);
-    }
-    return barPreset;
-  }, [barPreset, customBarText]);
+  const barKg = useMemo(
+    () => (barPreset === 'custom' ? parsePositiveNumber(customBarText) : barPreset),
+    [barPreset, customBarText],
+  );
 
-  const targetResult = useMemo(() => {
+  const targetResult = useMemo<TargetResult>(() => {
     const totalKg = parsePositiveNumber(targetText);
     if (totalKg == null || barKg == null) {
       const errors: string[] = [];
-      if (totalKg == null) {
-        errors.push('Podaj prawidłowy ciężar całkowity');
-      }
-      if (barKg == null) {
-        errors.push('Podaj prawidłową masę gryfu');
-      }
-      return {
-        ok: false as const,
-        errors,
-        solution: null,
-        nearest: null,
-        message: errors[0] ?? null,
-      };
+      if (totalKg == null) errors.push('Podaj prawidłowy ciężar całkowity');
+      if (barKg == null) errors.push('Podaj prawidłową masę gryfu');
+      return { ok: false, errors, solution: null, nearest: null, message: errors[0] ?? null };
     }
     return solveTargetToPlates(totalKg, barKg);
   }, [targetText, barKg]);
@@ -96,16 +96,11 @@ export function PlateCalculatorScreen() {
     return solvePlatesToTarget(barKg, plateCounts);
   }, [barKg, plateCounts]);
 
-  const resultPlates: PlateCount[] =
-    mode === 'target-to-plates'
-      ? (targetResult.solution?.plates ?? [])
-      : fromPlatesResult.plates;
-
   const bumpPlate = (plateKg: number, delta: number) => {
-    setPlateCounts((prev) => {
-      const next = Math.max(0, (prev[plateKg] ?? 0) + delta);
-      return { ...prev, [plateKg]: next };
-    });
+    setPlateCounts((prev) => ({
+      ...prev,
+      [plateKg]: Math.max(0, (prev[plateKg] ?? 0) + delta),
+    }));
   };
 
   const setPlateCountText = (plateKg: number, raw: string) => {
@@ -114,202 +109,162 @@ export function PlateCalculatorScreen() {
       return;
     }
     const parsed = parseNonNegativeInteger(raw);
-    if (parsed == null) {
-      return;
+    if (parsed != null) {
+      setPlateCounts((prev) => ({ ...prev, [plateKg]: parsed }));
     }
-    setPlateCounts((prev) => ({ ...prev, [plateKg]: parsed }));
   };
 
+  const solution = mode === 'target-to-plates' ? targetResult.solution : null;
+  const showPlates =
+    (mode === 'target-to-plates' && solution != null) ||
+    (mode === 'plates-to-target' && fromPlatesResult.ok);
+  const resultPlates: PlateCount[] =
+    mode === 'target-to-plates' ? (solution?.plates ?? []) : fromPlatesResult.plates;
+
   return (
-    <Screen tabBarInset={false}>
-      <SectionHeader
-        title="Konwerter talerzy"
-        subtitle="Cel ↔ układ talerzy na jedną stronę sztangi"
-      />
-
-      <View className="mb-4 flex-row gap-2">
-        <ModePill
-          label="Cel → talerze"
-          active={mode === 'target-to-plates'}
-          onPress={() => setMode('target-to-plates')}
+    <ScreenContainer>
+      <View className="mb-6 gap-4">
+        <SegmentedControl
+          accessibilityLabel="Tryb konwertera"
+          options={MODE_OPTIONS}
+          value={mode}
+          onChange={setMode}
         />
-        <ModePill
-          label="Talerze → cel"
-          active={mode === 'plates-to-target'}
-          onPress={() => setMode('plates-to-target')}
-        />
-      </View>
 
-      <SectionHeader title="Masa gryfu" />
-      <View className="mb-3 flex-row gap-2">
-        {STANDARD_BAR_OPTIONS_KG.map((option) => (
-          <ModePill
-            key={option}
-            label={`${option} kg`}
-            active={barPreset === option}
-            onPress={() => setBarPreset(option as 20 | 15)}
+        <View>
+          <Text className="mb-1.5 text-label font-medium text-text-secondary">Gryf</Text>
+          <SegmentedControl
+            accessibilityLabel="Masa gryfu"
+            options={BAR_OPTIONS}
+            value={barPreset}
+            onChange={setBarPreset}
           />
-        ))}
-        <ModePill
-          label="Własna"
-          active={barPreset === 'custom'}
-          onPress={() => setBarPreset('custom')}
-        />
-      </View>
+        </View>
 
-      {barPreset === 'custom' ? (
-        <View className="mb-4">
-          <NumberField
-            label="Własna masa gryfu (kg)"
+        {barPreset === 'custom' ? (
+          <FormField
+            label="Masa gryfu"
             value={customBarText}
             onChangeText={setCustomBarText}
             placeholder="np. 10"
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            selectTextOnFocus
+            trailing={<Text className="text-body text-text-secondary">kg</Text>}
           />
-        </View>
-      ) : null}
+        ) : null}
 
-      {mode === 'target-to-plates' ? (
-        <View className="mb-4">
-          <NumberField
-            label="Ciężar całkowity (kg)"
+        {mode === 'target-to-plates' ? (
+          <FormField
+            label="Ciężar docelowy (gryf + talerze)"
             value={targetText}
             onChangeText={setTargetText}
             placeholder="np. 100"
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            selectTextOnFocus
+            size="lg"
+            trailing={<Text className="text-body text-text-secondary">kg</Text>}
           />
-        </View>
-      ) : (
-        <View className="mb-4 gap-2">
+        ) : null}
+      </View>
+
+      {mode === 'plates-to-target' ? (
+        <View className="mb-6">
           <SectionHeader title="Talerze na jedną stronę" />
-          {STANDARD_PLATES_KG.map((plateKg) => (
-            <GlassPanel key={plateKg} variant="soft">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-3">
-                  <View
-                    style={{
-                      width: plateVisualWidth(plateKg) * 0.55,
-                      height: 18,
-                      borderRadius: 4,
-                      backgroundColor: plateVisualColor(plateKg),
-                      opacity: 0.85,
-                    }}
-                  />
-                  <Text className="text-body text-text-primary">
-                    {formatKg(plateKg)} kg
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    onPress={() => bumpPlate(plateKg, -1)}
-                    style={chipStyle}
-                    hitSlop={8}
-                  >
-                    <Icon name="minus" color={colors.aqua} size="sm" />
-                  </Pressable>
-                  <TextInput
-                    value={String(plateCounts[plateKg] ?? 0)}
-                    onChangeText={(text) => setPlateCountText(plateKg, text)}
-                    keyboardType="number-pad"
-                    selectTextOnFocus
-                    style={countInputStyle}
-                  />
-                  <Pressable
-                    onPress={() => bumpPlate(plateKg, 1)}
-                    style={chipStyle}
-                    hitSlop={8}
-                  >
-                    <Icon name="plus" color={colors.aqua} size="sm" />
-                  </Pressable>
-                </View>
-              </View>
-            </GlassPanel>
-          ))}
+          <AppCard padding="none" className="overflow-hidden">
+            {STANDARD_PLATES_KG.map((plateKg, index) => (
+              <Fragment key={plateKg}>
+                {index > 0 ? <ListDivider /> : null}
+                <PlateCountRow
+                  plateKg={plateKg}
+                  count={plateCounts[plateKg] ?? 0}
+                  onBump={(delta) => bumpPlate(plateKg, delta)}
+                  onChangeText={(text) => setPlateCountText(plateKg, text)}
+                />
+              </Fragment>
+            ))}
+          </AppCard>
         </View>
-      )}
-
-      {mode === 'target-to-plates' ? (
-        <TargetResultBlock result={targetResult} barKg={barKg} />
-      ) : (
-        <FromPlatesResultBlock result={fromPlatesResult} />
-      )}
-
-      {(mode === 'target-to-plates' && targetResult.solution) ||
-      (mode === 'plates-to-target' && fromPlatesResult.ok) ? (
-        <>
-          <SectionHeader title="Na jedną stronę" />
-          <View className="mb-6 flex-row gap-4">
-            <View className="flex-1 gap-2">
-              {resultPlates.length === 0 ? (
-                <GlassPanel variant="soft">
-                  <Text className="text-body text-text-secondary">
-                    Tylko gryf — bez talerzy
-                  </Text>
-                </GlassPanel>
-              ) : (
-                resultPlates.map((item) => (
-                  <GlassPanel key={item.plateKg} variant="soft">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-body text-text-primary">
-                        {formatKg(item.plateKg)} kg
-                      </Text>
-                      <Text className="text-caption text-aqua">
-                        × {item.count}
-                      </Text>
-                    </View>
-                  </GlassPanel>
-                ))
-              )}
-            </View>
-            <BarbellSleeve plates={resultPlates} />
-          </View>
-        </>
       ) : null}
-    </Screen>
+
+      <View className="mb-6">
+        {mode === 'target-to-plates' ? (
+          <TargetResultBlock result={targetResult} onPickTarget={(kg) => setTargetText(formatKg(kg))} />
+        ) : (
+          <FromPlatesResultBlock result={fromPlatesResult} />
+        )}
+      </View>
+
+      {showPlates ? (
+        <View>
+          <SectionHeader title="Układ talerzy" subtitle="Jedna strona gryfu, od środka" />
+          <AppCard>
+            <BarbellSleeve plates={resultPlates} />
+            {resultPlates.length > 0 ? (
+              <View className="mt-4 gap-2">
+                {resultPlates.map((item) => (
+                  <PlateLegendRow key={item.plateKg} plate={item} />
+                ))}
+              </View>
+            ) : (
+              <Text className="mt-3 text-body text-text-secondary">
+                Tylko gryf — talerze nie są potrzebne.
+              </Text>
+            )}
+          </AppCard>
+        </View>
+      ) : null}
+    </ScreenContainer>
   );
 }
 
 function TargetResultBlock({
   result,
-  barKg,
+  onPickTarget,
 }: {
-  result: ReturnType<typeof solveTargetToPlates> | {
-    ok: false;
-    errors: string[];
-    solution: null;
-    nearest: null;
-    message: string | null;
-  };
-  barKg: number | null;
+  result: TargetResult;
+  onPickTarget: (kg: number) => void;
 }) {
   if (!result.ok || !result.solution) {
+    const nearest = result.nearest;
+    const hasNearest = nearest && (nearest.belowKg != null || nearest.aboveKg != null);
     return (
-      <View className="mb-4 gap-3">
-        {result.message ? <ErrorBanner message={result.message} /> : null}
-        {result.errors.length > 1 ? (
-          <Text className="text-caption text-text-secondary">
-            {result.errors.slice(1).join(' · ')}
-          </Text>
-        ) : null}
-        {result.nearest &&
-        (result.nearest.belowKg != null || result.nearest.aboveKg != null) ? (
-          <GlassPanel variant="solid">
-            <Text className="text-caption text-text-secondary">
-              Najbliższe możliwe obciążenia
+      <View className="gap-3">
+        <ErrorState
+          message={result.message ?? result.errors[0] ?? 'Nieprawidłowe dane wejściowe'}
+          details={result.errors.slice(1)}
+        />
+        {hasNearest ? (
+          <View>
+            <Text className="mb-2 text-label text-text-secondary">
+              Najbliższe ciężary możliwe do ułożenia:
             </Text>
-            <View className="mt-2 flex-row justify-between">
-              <Text className="text-body text-text-primary">
-                ↓{' '}
-                {result.nearest.belowKg != null
-                  ? `${formatKg(result.nearest.belowKg)} kg`
-                  : '—'}
-              </Text>
-              <Text className="text-body text-text-primary">
-                ↑{' '}
-                {result.nearest.aboveKg != null
-                  ? `${formatKg(result.nearest.aboveKg)} kg`
-                  : '—'}
-              </Text>
+            <View className="flex-row gap-3">
+              {nearest.belowKg != null ? (
+                <View className="flex-1">
+                  <Button
+                    label={`${formatKg(nearest.belowKg)} kg`}
+                    variant="secondary"
+                    icon="minus"
+                    onPress={() => onPickTarget(nearest.belowKg!)}
+                    accessibilityHint="Ustawia ten ciężar jako docelowy"
+                  />
+                </View>
+              ) : null}
+              {nearest.aboveKg != null ? (
+                <View className="flex-1">
+                  <Button
+                    label={`${formatKg(nearest.aboveKg)} kg`}
+                    variant="secondary"
+                    icon="plus"
+                    onPress={() => onPickTarget(nearest.aboveKg!)}
+                    accessibilityHint="Ustawia ten ciężar jako docelowy"
+                  />
+                </View>
+              ) : null}
             </View>
-          </GlassPanel>
+          </View>
         ) : null}
       </View>
     );
@@ -317,62 +272,113 @@ function TargetResultBlock({
 
   const { solution } = result;
   return (
-    <View className="mb-4 gap-3">
-      <GlassPanel variant="elevated">
-        <Text className="text-caption font-semibold text-aqua">
-          Wynik
-        </Text>
-        <Text className="mt-1 text-title text-text-primary">
-          {formatKg(solution.totalKg)} kg
-        </Text>
-        <Text className="mt-2 text-caption text-text-secondary">
-          Gryf {formatKg(solution.barKg)} kg · {formatKg(solution.perSideKg)} kg
-          na stronę
-        </Text>
-      </GlassPanel>
-      {barKg != null && solution.totalKg === solution.barKg ? (
-        <Text className="text-caption text-text-secondary">
-          Ciężar równy masie gryfu — talerze nie są potrzebne.
-        </Text>
-      ) : null}
-    </View>
+    <ResultCard
+      label="Załóż na każdą stronę"
+      totalKg={solution.perSideKg}
+      detail={`Gryf ${formatKg(solution.barKg)} kg · razem ${formatKg(solution.totalKg)} kg`}
+    />
   );
 }
 
-function FromPlatesResultBlock({
-  result,
-}: {
-  result: ReturnType<typeof solvePlatesToTarget>;
-}) {
+function FromPlatesResultBlock({ result }: { result: ReturnType<typeof solvePlatesToTarget> }) {
   if (!result.ok || result.totalKg == null) {
-    return (
-      <View className="mb-4">
-        <ErrorBanner
-          message={result.errors[0] ?? 'Nieprawidłowe dane wejściowe'}
-        />
-      </View>
-    );
+    return <ErrorState message={result.errors[0] ?? 'Nieprawidłowe dane wejściowe'} />;
   }
-
   return (
-    <View className="mb-4">
-      <GlassPanel variant="elevated">
-        <Text className="text-caption font-semibold text-aqua">
-          Ciężar całkowity
-        </Text>
-        <Text className="mt-1 text-hero text-text-primary">
-          {formatKg(result.totalKg)} kg
-        </Text>
-        <Text className="mt-2 text-caption text-text-secondary">
-          Gryf {formatKg(result.barKg)} kg · {formatKg(result.perSideKg)} kg na
-          stronę (symetrycznie)
-        </Text>
-      </GlassPanel>
+    <ResultCard
+      label="Ciężar całkowity"
+      totalKg={result.totalKg}
+      detail={`Gryf ${formatKg(result.barKg)} kg · ${formatKg(result.perSideKg)} kg na stronę`}
+    />
+  );
+}
+
+function ResultCard({ label, totalKg, detail }: { label: string; totalKg: number; detail: string }) {
+  return (
+    <AppCard variant="elevated">
+      <Text className="text-label font-semibold text-accent">{label}</Text>
+      <Text
+        accessibilityLiveRegion="polite"
+        className="mt-1 text-text-primary"
+        style={{ fontSize: 44, lineHeight: 52, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+      >
+        {formatKg(totalKg)} kg
+      </Text>
+      <Text className="mt-1 text-body text-text-secondary">{detail}</Text>
+    </AppCard>
+  );
+}
+
+function PlateCountRow({
+  plateKg,
+  count,
+  onBump,
+  onChangeText,
+}: {
+  plateKg: number;
+  count: number;
+  onBump: (delta: number) => void;
+  onChangeText: (text: string) => void;
+}) {
+  const { colors } = useTheme();
+  const label = `${formatKg(plateKg)} kg`;
+  return (
+    <View className="min-h-[60px] flex-row items-center gap-3 px-4 py-2">
+      <View
+        className="w-2 rounded-full"
+        style={{ height: 28, backgroundColor: plateColor(plateKg, colors) }}
+      />
+      <Text className="flex-1 text-card-title text-text-primary">{label}</Text>
+      <IconButton
+        icon="minus"
+        accessibilityLabel={`Usuń talerz ${label}`}
+        onPress={() => onBump(-1)}
+        disabled={count <= 0}
+      />
+      <TextInput
+        value={String(count)}
+        onChangeText={onChangeText}
+        keyboardType="number-pad"
+        inputMode="numeric"
+        selectTextOnFocus
+        accessibilityLabel={`Liczba talerzy ${label}`}
+        selectionColor={colors.accent}
+        style={{
+          minWidth: 40,
+          minHeight: 44,
+          textAlign: 'center',
+          color: colors.textPrimary,
+          fontSize: 18,
+          fontWeight: '600',
+          fontVariant: ['tabular-nums'],
+        }}
+      />
+      <IconButton
+        icon="plus"
+        accessibilityLabel={`Dodaj talerz ${label}`}
+        onPress={() => onBump(1)}
+      />
     </View>
   );
 }
 
+function PlateLegendRow({ plate }: { plate: PlateCount }) {
+  const { colors } = useTheme();
+  return (
+    <View className="flex-row items-center gap-3">
+      <View
+        className="h-3 w-3 rounded-full"
+        style={{ backgroundColor: plateColor(plate.plateKg, colors) }}
+      />
+      <Text className="flex-1 text-body text-text-primary">{formatKg(plate.plateKg)} kg</Text>
+      <Text className="text-body font-semibold text-text-primary">× {plate.count}</Text>
+    </View>
+  );
+}
+
+/** Side view of one sleeve: collar on the left, heaviest plates closest to it. */
 function BarbellSleeve({ plates }: { plates: PlateCount[] }) {
+  const { colors } = useTheme();
   const stacked: number[] = [];
   for (const item of plates) {
     for (let i = 0; i < item.count; i += 1) {
@@ -382,145 +388,35 @@ function BarbellSleeve({ plates }: { plates: PlateCount[] }) {
 
   return (
     <View
-      style={{
-        width: 64,
-        borderRadius: radii.md,
-        borderWidth: 1,
-        borderColor: colors.glassBorder,
-        backgroundColor: colors.seaDepth,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 5,
-        minHeight: 160,
-      }}
+      accessible
+      accessibilityLabel={
+        stacked.length === 0
+          ? 'Pusty gryf'
+          : `Na stronę: ${stacked.map((kg) => `${formatKg(kg)} kg`).join(', ')}`
+      }
+      className="min-h-[108px] flex-row items-center py-2"
     >
-      {stacked.length === 0 ? (
-        <Text
-          style={{
-            color: colors.textMuted,
-            fontSize: 11,
-            transform: [{ rotate: '-90deg' }],
-            width: 80,
-            textAlign: 'center',
-          }}
-        >
-          pusty rękaw
-        </Text>
-      ) : (
-        stacked.map((plateKg, index) => (
-          <View
-            key={`${plateKg}-${index}`}
-            style={{
-              width: plateVisualWidth(plateKg),
-              height: 12,
-              borderRadius: 3,
-              backgroundColor: plateVisualColor(plateKg),
-              opacity: 0.55 + Math.min(plateKg, 25) / 70,
-            }}
-          />
-        ))
-      )}
-      <View
-        style={{
-          width: 10,
-          height: 48,
-          borderRadius: 4,
-          backgroundColor: colors.textMuted,
-        }}
-      />
+      <View className="h-4 w-4 rounded-sm" style={{ backgroundColor: colors.textMuted }} />
+      <View className="h-8 w-2 rounded-sm" style={{ backgroundColor: colors.textMuted }} />
+      <View className="flex-1 flex-row items-center">
+        <View
+          className="absolute left-0 right-0 h-2.5 rounded-full"
+          style={{ backgroundColor: colors.border }}
+        />
+        <View className="flex-row flex-wrap items-center" style={{ gap: 3 }}>
+          {stacked.map((plateKg, index) => (
+            <View
+              key={`${plateKg}-${index}`}
+              className="rounded-[3px]"
+              style={{
+                width: plateKg >= 10 ? 12 : 9,
+                height: plateHeight(plateKg),
+                backgroundColor: plateColor(plateKg, colors),
+              }}
+            />
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
-
-function ModePill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flex: 1,
-        borderRadius: radii.pill,
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: active ? colors.aqua : colors.glassBorder,
-        backgroundColor: active ? colors.activeGlow : colors.glassFill,
-      }}
-    >
-      <Text
-        style={{
-          color: active ? colors.aqua : colors.textSecondary,
-          fontWeight: '600',
-          fontSize: 13,
-          textAlign: 'center',
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <GlassPanel variant="solid">
-      <Text className="mb-2 text-caption text-text-secondary">{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        selectTextOnFocus
-        style={fieldInputStyle}
-      />
-    </GlassPanel>
-  );
-}
-
-const chipStyle = {
-  width: 36,
-  height: 36,
-  borderRadius: radii.pill,
-  borderWidth: 1,
-  borderColor: colors.glassBorder,
-  backgroundColor: colors.glassFill,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};
-
-const fieldInputStyle: TextInputProps['style'] = {
-  color: colors.textPrimary,
-  fontSize: 22,
-  fontWeight: '600',
-  paddingVertical: 4,
-};
-
-const countInputStyle: TextInputProps['style'] = {
-  color: colors.textPrimary,
-  fontSize: 16,
-  fontWeight: '600',
-  minWidth: 36,
-  textAlign: 'center',
-  paddingVertical: 4,
-};

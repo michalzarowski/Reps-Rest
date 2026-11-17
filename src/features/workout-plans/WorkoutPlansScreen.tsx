@@ -1,16 +1,14 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image } from 'expo-image';
-import { Link, type Href } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
-import { GlassPanel, MetricChip, Screen, SectionHeader } from '@/components';
-import { demoPlanCategories, demoPlans } from '@/mocks/demo';
-import { colors, radii } from '@/theme';
-
-const planThumb = require('../../../assets/images/immersive/progress-training.png');
+import { AppCard, Badge, Icon, ScreenContainer, SectionHeader } from '@/components';
+import { useTheme } from '@/context';
+import { demoPlanCategories, demoPlans, type DemoPlanCategory } from '@/mocks/demo';
 
 export function WorkoutPlansScreen() {
-  const [category, setCategory] = useState<(typeof demoPlanCategories)[number]>('Wszystkie');
+  const { colors } = useTheme();
+  const [category, setCategory] = useState<DemoPlanCategory>('Wszystkie');
 
   const filtered =
     category === 'Wszystkie'
@@ -18,29 +16,38 @@ export function WorkoutPlansScreen() {
       : demoPlans.filter((plan) => plan.category === category);
 
   return (
-    <Screen title="Plany" subtitle="Przeglądaj przykładowe programy — jeszcze bez zapisu.">
-      <View className="mb-4 flex-row flex-wrap gap-2">
+    <ScreenContainer title="Plany" subtitle="Przykładowe programy treningowe.">
+      <AppCard variant="outline" className="mb-6">
+        <View className="flex-row gap-3">
+          <Icon name="info" size="sm" color={colors.accent} />
+          <Text className="flex-1 text-label text-text-secondary">
+            Tworzenie i zapisywanie własnych planów jest w przygotowaniu. Poniższe
+            programy służą jako inspiracja.
+          </Text>
+        </View>
+      </AppCard>
+
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Filtr kategorii"
+        className="mb-5 flex-row flex-wrap gap-2"
+      >
         {demoPlanCategories.map((item) => {
           const active = item === category;
           return (
             <Pressable
               key={item}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active, checked: active }}
               onPress={() => setCategory(item)}
-              style={{
-                borderRadius: radii.pill,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor: active ? colors.aqua : colors.glassBorder,
-                backgroundColor: active ? colors.activeGlow : colors.glassFill,
-              }}
+              className={`min-h-[36px] justify-center rounded-full border px-4 ${
+                active ? 'border-accent bg-accent' : 'border-border bg-surface active:opacity-70'
+              }`}
             >
               <Text
-                style={{
-                  color: active ? colors.aqua : colors.textSecondary,
-                  fontWeight: '600',
-                  fontSize: 13,
-                }}
+                className={`text-label font-semibold ${
+                  active ? 'text-on-accent' : 'text-text-secondary'
+                }`}
               >
                 {item}
               </Text>
@@ -49,49 +56,30 @@ export function WorkoutPlansScreen() {
         })}
       </View>
 
-      <SectionHeader title="Programy" subtitle={`${filtered.length} pozycji`} />
+      <SectionHeader title="Programy" subtitle={`Liczba programów: ${filtered.length}`} />
 
       <View className="gap-3">
         {filtered.map((plan) => (
-          <Link key={plan.id} href={`/plans/${plan.id}` as Href} asChild>
-            <Pressable className="active:opacity-85">
-              <GlassPanel variant="elevated">
-                <View className="flex-row gap-3">
-                  <Image
-                    source={planThumb}
-                    style={{
-                      width: 84,
-                      height: 84,
-                      borderRadius: radii.sm,
-                    }}
-                    contentFit="cover"
-                  />
-                  <View className="flex-1 justify-center">
-                    <Text className="text-body font-semibold text-text-primary">
-                      {plan.name}
-                    </Text>
-                    <Text className="mt-1 text-caption text-text-secondary">
-                      {plan.frequency}
-                    </Text>
-                    <View className="mt-2 self-start">
-                      <MetricChip
-                        label={plan.category}
-                        tone={
-                          plan.category === 'Siła'
-                            ? 'lilac'
-                            : plan.category === 'Hipertrofia'
-                              ? 'aqua'
-                              : 'mint'
-                        }
-                      />
-                    </View>
-                  </View>
+          <AppCard
+            key={plan.id}
+            onPress={() => router.push({ pathname: '/plans/[id]', params: { id: plan.id } })}
+            accessibilityLabel={`${plan.name}, ${plan.frequency}`}
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="flex-1">
+                <Text className="text-card-title text-text-primary">{plan.name}</Text>
+                <Text className="mt-0.5 text-label text-text-secondary">
+                  {plan.frequency} · {plan.duration}
+                </Text>
+                <View className="mt-2.5">
+                  <Badge label={plan.level} tone="neutral" />
                 </View>
-              </GlassPanel>
-            </Pressable>
-          </Link>
+              </View>
+              <Icon name="chevronRight" size="sm" color={colors.textMuted} />
+            </View>
+          </AppCard>
         ))}
       </View>
-    </Screen>
+    </ScreenContainer>
   );
 }

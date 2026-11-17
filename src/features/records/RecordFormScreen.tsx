@@ -1,24 +1,15 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 
 import {
-  ErrorBanner,
-  GlassButton,
-  GlassPanel,
-  Screen,
-  SectionHeader,
+  Button,
+  ErrorState,
+  FormField,
+  ScreenContainer,
+  showMessage,
 } from '@/components';
 import { useRecords } from '@/context';
-import { colors } from '@/theme';
 import {
   parseAndValidateRecordForm,
   todayIsoDate,
@@ -65,6 +56,9 @@ export function RecordFormScreen() {
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const submittingRef = useRef(false);
+  const weightRef = useRef<TextInput>(null);
+  const repsRef = useRef<TextInput>(null);
+  const dateRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (!existing) {
@@ -79,9 +73,7 @@ export function RecordFormScreen() {
 
   useEffect(() => {
     if (isEdit && hasLoaded && recordId && !existing) {
-      Alert.alert('Brak wpisu', 'Nie znaleziono wyniku do edycji.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      showMessage('Brak wpisu', 'Nie znaleziono wyniku do edycji.', () => router.back());
     }
   }, [existing, hasLoaded, isEdit, recordId]);
 
@@ -122,7 +114,7 @@ export function RecordFormScreen() {
         });
       }
     } catch {
-      Alert.alert(
+      showMessage(
         'Zapis nieudany',
         'Wynik nie został trwale zapisany. Sprawdź pamięć urządzenia i spróbuj ponownie.',
       );
@@ -132,104 +124,108 @@ export function RecordFormScreen() {
   };
 
   return (
-    <Screen tabBarInset={false}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={88}
-      >
-        <SectionHeader
-          title={isEdit ? 'Edytuj wynik' : 'Nowy wynik'}
-          subtitle="Ciężar × powtórzenia z datą wykonania"
+    <ScreenContainer>
+      <Stack.Screen options={{ title: isEdit ? 'Edytuj wynik' : 'Nowy wynik' }} />
+
+      {error ? (
+        <View className="mb-4">
+          <ErrorState message={error} />
+        </View>
+      ) : null}
+
+      {fieldErrors.length > 0 ? (
+        <View className="mb-4">
+          <ErrorState
+            message="Popraw dane formularza"
+            details={fieldErrors}
+          />
+        </View>
+      ) : null}
+
+      <View className="gap-4">
+        <FormField
+          label="Ćwiczenie"
+          value={exerciseName}
+          onChangeText={setExerciseName}
+          placeholder="np. Wyciskanie leżąc"
+          autoCapitalize="sentences"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => weightRef.current?.focus()}
         />
-
-        {error ? (
-          <View className="mb-3">
-            <ErrorBanner message={error} />
-          </View>
-        ) : null}
-
-        {fieldErrors.length > 0 ? (
-          <View className="mb-3">
-            <ErrorBanner message={fieldErrors.join(' · ')} />
-          </View>
-        ) : null}
-
-        <View className="gap-3">
-          <TextField
-            label="Ćwiczenie"
-            value={exerciseName}
-            onChangeText={setExerciseName}
-            placeholder="np. Wyciskanie leżąc"
-            autoCapitalize="sentences"
-          />
-          <TextField
-            label="Ciężar (kg)"
-            value={weightText}
-            onChangeText={setWeightText}
-            placeholder="np. 100 lub 82,5"
-            keyboardType="decimal-pad"
-            inputMode="decimal"
-          />
-          <TextField
-            label="Powtórzenia"
-            value={repsText}
-            onChangeText={setRepsText}
-            placeholder="np. 5"
-            keyboardType="number-pad"
-            inputMode="numeric"
-          />
-          <GlassPanel variant="solid">
-            <Text className="mb-2 text-caption text-text-secondary">
-              Data (RRRR-MM-DD)
-            </Text>
-            <TextInput
-              value={dateText}
-              onChangeText={setDateText}
-              placeholder={todayIsoDate()}
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={fieldInputStyle}
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <FormField
+              ref={weightRef}
+              label="Ciężar"
+              value={weightText}
+              onChangeText={setWeightText}
+              placeholder="np. 82,5"
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+              selectTextOnFocus
+              returnKeyType="next"
+              onSubmitEditing={() => repsRef.current?.focus()}
+              trailing={<Text className="text-body text-text-secondary">kg</Text>}
             />
-            <View className="mt-3">
-              <GlassButton
-                label="Ustaw dzisiejszą datę"
-                variant="secondary"
-                size="sm"
-                onPress={() => setDateText(todayIsoDate())}
-              />
-            </View>
-          </GlassPanel>
-          <GlassPanel variant="solid">
-            <Text className="mb-2 text-caption text-text-secondary">
-              Notatka (opcjonalnie)
-            </Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="np. łatwy zapas, pasek"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              style={[fieldInputStyle, { minHeight: 72, textAlignVertical: 'top' }]}
+          </View>
+          <View className="flex-1">
+            <FormField
+              ref={repsRef}
+              label="Powtórzenia"
+              value={repsText}
+              onChangeText={setRepsText}
+              placeholder="np. 5"
+              keyboardType="number-pad"
+              inputMode="numeric"
+              selectTextOnFocus
+              returnKeyType="next"
+              onSubmitEditing={() => dateRef.current?.focus()}
             />
-          </GlassPanel>
+          </View>
         </View>
+        <FormField
+          ref={dateRef}
+          label="Data"
+          hint="Format RRRR-MM-DD"
+          value={dateText}
+          onChangeText={setDateText}
+          placeholder={todayIsoDate()}
+          autoCapitalize="none"
+          autoCorrect={false}
+          trailing={
+            <Button
+              label="Dziś"
+              variant="ghost"
+              size="sm"
+              fullWidth={false}
+              onPress={() => setDateText(todayIsoDate())}
+            />
+          }
+        />
+        <FormField
+          label="Notatka (opcjonalnie)"
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="np. łatwy zapas, pasek"
+          multiline
+        />
+      </View>
 
-        <View className="mt-5 gap-3">
-          <GlassButton
-            label={isSaving ? 'Zapisywanie…' : isEdit ? 'Zapisz zmiany' : 'Zapisz wynik'}
-            onPress={() => void onSubmit()}
-            disabled={isSaving}
-          />
-          <GlassButton
-            label="Anuluj"
-            variant="ghost"
-            onPress={() => router.back()}
-            disabled={isSaving}
-          />
-        </View>
-      </KeyboardAvoidingView>
-    </Screen>
+      <View className="mt-6 gap-2">
+        <Button
+          label={isEdit ? 'Zapisz zmiany' : 'Zapisz wynik'}
+          loading={isSaving}
+          onPress={() => void onSubmit()}
+        />
+        <Button
+          label="Anuluj"
+          variant="ghost"
+          onPress={() => router.back()}
+          disabled={isSaving}
+        />
+      </View>
+    </ScreenContainer>
   );
 }
 
@@ -239,45 +235,3 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   }
   return value;
 }
-
-function TextField({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  inputMode,
-  autoCapitalize,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  keyboardType?: TextInputProps['keyboardType'];
-  inputMode?: TextInputProps['inputMode'];
-  autoCapitalize?: TextInputProps['autoCapitalize'];
-}) {
-  return (
-    <GlassPanel variant="solid">
-      <Text className="mb-2 text-caption text-text-secondary">{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        keyboardType={keyboardType}
-        inputMode={inputMode}
-        autoCapitalize={autoCapitalize}
-        selectTextOnFocus
-        style={fieldInputStyle}
-      />
-    </GlassPanel>
-  );
-}
-
-const fieldInputStyle: TextInputProps['style'] = {
-  color: colors.textPrimary,
-  fontSize: 18,
-  fontWeight: '600',
-  paddingVertical: 4,
-};
