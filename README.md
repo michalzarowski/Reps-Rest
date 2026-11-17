@@ -37,7 +37,7 @@ Celem projektu jest stworzenie aplikacji mobilnej, która pozwala szybko wykona�
 | Stan aplikacji | React Context API + hooks | Wystarczy dla niewielkiego projektu; stan globalny powinien obejmować tylko dane współdzielone. |
 | Trwały zapis | `@react-native-async-storage/async-storage` | Odpowiedni dla małej ilości niesensytywnych danych. Dane obiektowe zapisujemy jako JSON. |
 | Katalog ćwiczeń | REST API wger | Publiczne endpointy katalogu mogą być dostępne bez uwierzytelnienia; należy obsłużyć paginację, brak połączenia i błędy API. |
-| Wykresy | Jedna wybrana biblioteka wykresów dla React Native | Przed wyborem sprawdzić zgodność z wersją Expo/React Native. Nie ma potrzeby dodawania dwóch bibliotek wykresów. |
+| Wykresy | `react-native-gifted-charts` | Jedna biblioteka wykresów. Czysty JS na `react-native-svg` (już w projekcie) i `expo-linear-gradient`, bez modułów natywnych — działa z Expo SDK 54 i w Expo Go. Wersja przypięta (`1.4.81`). |
 | AI — opcjonalnie | Google Gemini API | Dopiero po ukończeniu wersji bazowej; wymagane bezpieczne pośrednictwo backendu/proxy. |
 | Kontrola wersji | Git + GitHub | Małe commity po każdym działającym fragmencie, repozytorium aktualizowane na bieżąco. |
 
@@ -140,7 +140,7 @@ app/                              # wyłącznie nawigacja (Expo Router)
     index.tsx                     # Home
     tools/                        # Stack: hub + 1RM / timer / talerze / rekordy
     plans.tsx
-    progress.tsx
+    progress/                     # Stack: Postępy / pomiar / historia / wzrost i cel
 src/
   components/ui/                  # współdzielone elementy UI
   features/
@@ -152,7 +152,7 @@ src/
     records/
     progress/
     workout-plans/
-  context/                        # AppProviders, Settings / Theme / Records providers
+  context/                        # AppProviders, Settings / Theme / Records / BodyWeight providers
   hooks/
   services/
     api/                          # klient HTTP + stub wger (bez auto-fetch)
@@ -173,6 +173,7 @@ src/
 - Zakładki: Główna, Narzędzia, Plany, Postępy — standardowy (nieabsolutny) tab bar z `expo-router` `Tabs`. Navigator sam rezerwuje jego wysokość i inset home indicatora, więc ekrany nie potrzebują ręcznego `paddingBottom`.
 - `ScreenContainer` liczy odstępy z kontekstu nawigacji: górny inset tylko gdy nad ekranem nie ma natywnego nagłówka, dolny inset tylko poza zakładkami (Profil, szczegóły planu). Przewijanie ma `keyboardShouldPersistTaps` i automatyczne odsuwanie klawiatury na iOS; na Androidzie tab bar chowa się przy otwartej klawiaturze.
 - Stack Narzędzi (1RM, Timer, Talerze, Dziennik PR) ma natywny nagłówek z powrotem; `unstable_settings.initialRouteName` gwarantuje, że skrót z dashboardu zawsze ma pod sobą ekran Narzędzi. Tab bar pozostaje widoczny w narzędziach (szybkie przełączanie na siłowni).
+- Stack Postępów (formularz pomiaru, historia, wzrost i cel) działa tak samo — ekran Postępy zawsze jest pod spodem.
 - Profil (`/profile`) i szczegóły programu (`/plans/[id]`) są w głównym stacku — pełny ekran bez tab bara, z przyciskiem powrotu.
 
 Szczegółowe konwencje dla agentów i dalszej pracy: zob. `AGENTS.md`.
@@ -194,9 +195,9 @@ Szczegółowe konwencje dla agentów i dalszej pracy: zob. `AGENTS.md`.
 | `WorkoutPlan` | `id`, `name`, `createdAt`, `updatedAt`, `items[]` |
 | `WorkoutPlanItem` | `exerciseId`, `order`, `sets`, `repMin`, `repMax`, `restSeconds`, `notes` |
 | `PersonalRecord` | `id`, `exerciseName`, `exerciseKey`, `exerciseId?`, `weightKg`, `reps`, `date`, `notes?`, `createdAt`, `updatedAt` |
-| `BodyWeightEntry` | `id`, `date`, `weightKg` |
+| `BodyWeightEntry` | `id`, `date`, `weightKg`, `createdAt`, `updatedAt` (jeden pomiar na dzień) |
 | `TimerPreset` | `id`, `name`, `rounds`, `workSeconds`, `restSeconds`, `warmupSeconds` |
-| `UserSettings` | `heightCm`, `preferredUnit`, `availablePlatesKg`, `theme` |
+| `UserSettings` | `heightCm`, `bodyGoal` (`cut` / `maintain` / `gain` / `null`), `preferredUnit`, `availablePlatesKg`, `theme` |
 
 Wewnętrznie warto przechowywać masy w jednej jednostce (np. kg), a dopiero przy prezentacji przeliczać je na preferowaną jednostkę. Każdy rekord powinien mieć stabilny identyfikator, a nie opierać się wyłącznie na nazwie ćwiczenia.
 
@@ -204,30 +205,30 @@ Wewnętrznie warto przechowywać masy w jednej jednostce (np. kg), a dopiero prz
 
 Aktualny stan ekranów:
 
-1. **Główna** — powitanie i przycisk profilu, karta planu (uczciwy pusty stan, bo plany nie są jeszcze zapisywane), szybkie narzędzia, „Twoje postępy” z ostatnim rekordem z dziennika PR.
+1. **Główna** — powitanie i przycisk profilu, karta planu (uczciwy pusty stan, bo plany nie są jeszcze zapisywane), szybkie narzędzia, „Twoje postępy” z ostatnim pomiarem masy ciała, trendem i ostatnimi rekordami z dziennika PR.
 2. **Narzędzia** — lista modułów: 1RM, timer, konwerter talerzy, dziennik PR.
 3. **Plany** — przykładowe programy z filtrem kategorii i ekranem szczegółów (wyraźnie oznaczone jako przykłady).
-4. **Postępy** — podsumowanie dziennika PR; masa ciała oznaczona jako funkcja w przygotowaniu.
-5. **Profil i ustawienia** — wybór motywu, liczba zapisanych wpisów, wersja aplikacji.
+4. **Postępy** — masa ciała (ostatni pomiar, trend, wykres, BMI, cel, historia) oraz podsumowanie dziennika PR.
+5. **Profil i ustawienia** — wybór motywu, liczba wpisów PR i pomiarów, skrót do wzrostu i celu, wersja aplikacji.
 
 Docelowa zawartość ekranów (do implementacji etapami):
 
 - **1RM / talerze / timer / rekordy** — pełna logika w `src/features/*` (spotkania 2–3 ✅).
-- **Postępy** — historia masy ciała, wykres i BMI.
+- **Postępy** — historia masy ciała, wykres i BMI (spotkanie 4 ✅).
 - **Plany** — lista planów, edytor, katalog wger + ćwiczenia własne.
-- **Ustawienia** — motyw ✅; jednostki, wzrost i talerze później.
+- **Ustawienia** — motyw ✅, wzrost i cel ✅; jednostki i talerze później.
 
 ## 7. Harmonogram — 5 spotkań
 
-Plan zakłada pięć spotkań roboczych, każde około 90–120 minut. Między spotkaniami warto samodzielnie dopracować rozpoczęte zadania. Harmonogram opisuje zakres minimalny; rozszerzenia realizować dopiero po spełnieniu kryteriów wersji bazowej.
+Plan zakłada pięć spotkań roboczych, każde około 90–120 minut. Kolejność spotkań 4 i 5 została zamieniona: najpierw moduł Postępy (masa ciała, BMI, wykres), kreator planów przechodzi na spotkanie 5. Między spotkaniami warto samodzielnie dopracować rozpoczęte zadania. Harmonogram opisuje zakres minimalny; rozszerzenia realizować dopiero po spełnieniu kryteriów wersji bazowej.
 
 | Spotkanie | Zakres prac | Rezultat / kryterium zakończenia |
 |---|---|---|
 | **1. Fundamenty i szkielet aplikacji** ✅ | Doprecyzowanie MVP; utworzenie projektu Expo + TypeScript; konfiguracja NativeWind; podstawowa nawigacja; motyw i komponenty bazowe; struktura katalogów; konfiguracja Git. | Aplikacja uruchamia się na urządzeniu/emulatorze, ma działające przejścia między pustymi ekranami modułów, a repozytorium zawiera pierwszą działającą wersję. |
 | **2. Kalkulatory i logika domenowa** ✅ | Implementacja kalkulatora 1RM (Epley/Brzycki), walidacja; konwerter obciążeń z masą gryfu i talerzami na jedną stronę; proste testy funkcji obliczeniowych; dopracowanie formularzy. | Kalkulatory poprawnie liczą typowe przypadki, odrzucają nieprawidłowe dane i pokazują czytelne komunikaty. |
 | **3. Timer i dziennik PR** ✅ | Timer z rundami/przerwami, start/pauza/reset i presetami; dziennik rekordów; zapis i odczyt lokalny; obsługa błędów zapisu oraz ponownego uruchomienia aplikacji. | Ustawiony timer działa zgodnie z parametrami, a dodane rekordy zostają zachowane po zamknięciu i ponownym uruchomieniu aplikacji. |
-| **4. Kreator planów i katalog ćwiczeń** | Modele `Exercise` i `WorkoutPlan`; tworzenie/edycja planu; dodawanie ćwiczeń; integracja wger; stany ładowania, pustego wyniku i błędu sieci; możliwość dodania ćwiczenia własnego. | Użytkownik tworzy i zapisuje plan z ćwiczeniami z katalogu lub własnymi. Podstawowe plany są dostępne także bez internetu po wcześniejszym zapisaniu. |
-| **5. Postępy, testy i prezentacja** | Historia masy ciała, BMI i wykres; testy manualne całej aplikacji; poprawki UI; pusty stan i komunikaty błędów; finalne README i przygotowanie demonstracji. Jeśli zostanie czas: eksport CSV. | Wszystkie funkcje bazowe są możliwe do zademonstrowania, dane zachowują się poprawnie, a repozytorium zawiera opis uruchomienia i ograniczeń. |
+| **4. Postępy: masa ciała i BMI** ✅ | Historia masy ciała z datą; wzrost i BMI jako orientacyjny wskaźnik; opcjonalny cel opisujący trend; wykres zmian masy (jedna biblioteka zgodna z Expo); ekran Postępy na prawdziwych danych z AsyncStorage; testy logiki. | Pomiary zostają zachowane po ponownym uruchomieniu, wykres i trend liczą się z zapisanych danych, a BMI jest opisane z ograniczeniami. |
+| **5. Kreator planów, katalog ćwiczeń i prezentacja** | Modele `Exercise` i `WorkoutPlan`; tworzenie/edycja planu; dodawanie ćwiczeń; integracja wger; stany ładowania, pustego wyniku i błędu sieci; ćwiczenia własne; testy manualne całej aplikacji, poprawki UI, finalne README i przygotowanie demonstracji. Jeśli zostanie czas: eksport CSV. | Użytkownik tworzy i zapisuje plan z ćwiczeniami z katalogu lub własnymi (także offline po wcześniejszym zapisaniu). Wszystkie funkcje bazowe są możliwe do zademonstrowania. |
 
 ### Status spotkania 2 (kalkulatory)
 
@@ -271,6 +272,25 @@ Ograniczenia 3B:
 - Brak powiązania z katalogiem wger / planami (pole `exerciseId` zarezerwowane na później).
 - Brak wykresów progresji i eksportu CSV.
 - Data wprowadzana jako `RRRR-MM-DD` (bez natywnego date pickera).
+
+### Status spotkania 4 (masa ciała, BMI i Postępy)
+
+Ukończone:
+
+- **Model i logika** — `BodyWeightEntry` (jeden pomiar na dzień), walidacja formularza (przecinek dziesiętny, zakres 20–350 kg, data bez przyszłości), wzrost 100–250 cm w `UserSettings.heightCm`. Cała logika w `src/utils/bodyWeight.ts`.
+- **BMI** — `masa / wzrost²`, zaokrąglone do 0,1, z przedziałem referencyjnym WHO podanym neutralnie („W przedziale 25–29,9”). Na każdym ekranie z BMI jest opis: orientacyjny wskaźnik z masy i wzrostu, nie mierzy tkanki tłuszczowej, u osób umięśnionych może mylić, nie służy do diagnozy.
+- **Trend** — ostatnie 30 dni przed najnowszym pomiarem, nachylenie z regresji liniowej (odporne na wahania dzienne), próg stabilności 0,2 kg/tydz.; wymaga min. 2 pomiarów w odstępie ≥ 7 dni.
+- **Cel** — opcjonalny (redukcja / utrzymanie / budowa masy) w `UserSettings.bodyGoal`; zmienia wyłącznie opis trendu („kierunek zgodny / inny niż wybrany cel”). Aplikacja nie wyznacza docelowej masy ani nie zaleca diety.
+- **Wykres** — `react-native-gifted-charts` (linia + wypełnienie, kolory z motywu, bez animacji), ostatnie 30 pomiarów, oś Y z „ładnym” krokiem i min. zakresem 4 kg, daty pod wykresem; opis dostępności z zakresem dat i mas.
+- **UI** — Postępy: ostatni pomiar, trend, wykres, karty BMI i celu, 5 ostatnich pomiarów z różnicą, pełna historia; formularz dodawania/edycji/usuwania; ekran „Wzrost i cel”; karta masy ciała na Głównej i skróty w Profilu. Uczciwe puste stany, bez danych demo.
+- **Persystencja** — AsyncStorage (`storageKeys.bodyWeight`) przez `src/services/bodyWeight.ts` + `BodyWeightProvider` (kolejka zapisów, brak nadpisywania pustą listą przy błędzie odczytu). Ustawienia scalane z wartościami domyślnymi, więc starsze zapisy dostają `bodyGoal: null`.
+- **Testy** — Vitest: `src/utils/bodyWeight.test.ts` + `src/services/bodyWeight.test.ts` (łącznie: `npm test`).
+
+Ograniczenia 4:
+
+- Tylko kilogramy (bez przełączania na lb).
+- Data wpisywana jako `RRRR-MM-DD` (bez natywnego date pickera), jak w dzienniku PR.
+- Wykres pokazuje do 30 ostatnich pomiarów, bez przewijania i powiększania.
 
 ### Kolejność priorytetów przy opóźnieniach
 

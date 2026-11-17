@@ -5,14 +5,16 @@ import { Text, View } from 'react-native';
 import {
   AppCard,
   ErrorState,
+  ListDivider,
   ListRow,
   ScreenContainer,
   SectionHeader,
   SegmentedControl,
 } from '@/components';
 import { APP_NAME } from '@/constants';
-import { useRecords, useSettings, useTheme } from '@/context';
-import type { UserSettings } from '@/types';
+import { useBodyWeight, useRecords, useSettings, useTheme } from '@/context';
+import type { BodyGoal, UserSettings } from '@/types';
+import { BODY_GOAL_LABELS, formatNumberPl } from '@/utils/bodyWeight';
 
 const THEME_OPTIONS = [
   { value: 'system', label: 'Systemowy' },
@@ -22,8 +24,9 @@ const THEME_OPTIONS = [
 
 export function ProfileScreen() {
   const { preference, setPreference } = useTheme();
-  const { error: settingsError } = useSettings();
+  const { settings, error: settingsError } = useSettings();
   const { records } = useRecords();
+  const { entries: weightEntries } = useBodyWeight();
   const version = Constants.expoConfig?.version ?? '—';
 
   return (
@@ -50,6 +53,20 @@ export function ProfileScreen() {
               description={`Zapisane wpisy: ${records.length}`}
               onPress={() => router.push('/tools/records')}
             />
+            <ListDivider />
+            <ListRow
+              icon="scale"
+              title="Masa ciała"
+              description={`Zapisane pomiary: ${weightEntries.length}`}
+              onPress={() => router.push('/progress')}
+            />
+            <ListDivider />
+            <ListRow
+              icon="user"
+              title="Wzrost i cel"
+              description={describeBodyProfile(settings.heightCm, settings.bodyGoal)}
+              onPress={() => router.push('/progress/body-profile')}
+            />
           </AppCard>
           <Text className="mt-2 text-label text-text-muted">
             Wszystkie dane są przechowywane lokalnie na tym urządzeniu. Aplikacja nie
@@ -71,4 +88,10 @@ export function ProfileScreen() {
       </View>
     </ScreenContainer>
   );
+}
+
+function describeBodyProfile(heightCm: number | null, goal: BodyGoal | null): string {
+  const height = heightCm == null ? 'Wzrost nie podany' : `${formatNumberPl(heightCm, 1)} cm`;
+  const goalText = goal ? `cel: ${BODY_GOAL_LABELS[goal].toLocaleLowerCase('pl-PL')}` : 'bez celu';
+  return `${height} · ${goalText}`;
 }

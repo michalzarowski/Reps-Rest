@@ -29,7 +29,7 @@ Pin `lucide-react-native@0.577.0` (1.x breaks Metro resolution on SDK 54).
 | `src/components/ui/` | Shared presentational components (`GlassSurface` is the card material) |
 | `src/services/api/` | HTTP client + wger stubs; no UI |
 | `src/services/storage/` | Only AsyncStorage access; JSON + `schemaVersion` |
-| `src/context/` | Narrow providers composed in `AppProviders` (Settings → Theme → Records) |
+| `src/context/` | Narrow providers composed in `AppProviders` (Settings → Theme → Records → BodyWeight) |
 | `src/types/` | Domain TypeScript models |
 | `src/utils/` | Pure helpers (formulas belong here for unit testing) |
 | `src/theme/` | Design tokens (canonical, dark + light), `themeVars`, navigation theme |
@@ -52,6 +52,7 @@ Import alias: `@/*` → `src/*`.
 - Press feedback = brighter sheen / stronger glow (`pressed`), no continuous animations. No stock imagery.
 - Icons: only via `@/components` `Icon` (Lucide whitelist, single stroke width).
 - Shared UI: `ScreenContainer`, `ScreenHeader`, `SectionHeader`, `AppCard`, `Button`, `IconButton`, `FormField`, `Stepper`, `SegmentedControl`, `ListRow`, `Badge`, `StatCard`, `EmptyState`, `LoadingState`, `ErrorState`, `confirmAction` / `showMessage`.
+- BMI is always presented as an orientation index (not body fat, may mislead for muscular people, no diagnosis). The body goal only changes the trend description — never recommend diets or target weights.
 - Never show demo values as user data. Features that are not implemented get an honest empty state, not an active-looking button.
 
 ## Layout and navigation rules
@@ -67,7 +68,7 @@ Import alias: `@/*` → `src/*`.
 1. Do not put business logic or storage/API calls in `app/` route files.
 2. Keep Context providers focused; do not create one global “AppStore”.
 3. Never commit secrets or put API keys in `EXPO_PUBLIC_*` env vars.
-4. Do not implement AI/CSV/full chart libraries until the base MVP modules work.
+4. Do not implement AI/CSV until the base MVP modules work. The only chart library is `react-native-gifted-charts` (pinned `1.4.81`, pure JS on `react-native-svg`); do not add a second one.
 5. Prefer placeholders and stubs over unfinished half-features.
 6. Normalize external API data into `src/types` models before using it in UI.
 7. Match existing naming, NativeWind usage, and file layout before inventing new patterns.
@@ -76,6 +77,7 @@ Import alias: `@/*` → `src/*`.
 
 - Tabs: Główna, Narzędzia, Plany, Postępy (standard tab bar, teal active tint)
 - Tools stack: 1RM, Timer, Plates, Records (list / exercise history / form)
+- Progress stack: overview, weight form (`?id=` edits), history, body profile (height + goal)
 - Stack: Profile, Plan detail
 
 ## Verification

@@ -12,11 +12,17 @@ import {
   SectionHeader,
 } from '@/components';
 import { useTheme } from '@/context';
+import type { BodyWeightEntry } from '@/types';
 import type { RecordsOverview } from '@/utils';
-import { formatWeightReps } from '@/utils/records';
+import { formatBodyWeight } from '@/utils/bodyWeight';
+import { formatDisplayDate, formatWeightReps } from '@/utils/records';
 
 interface ProgressSummaryProps {
   overview: RecordsOverview;
+  /** Newest body-weight measurement, if any. */
+  latestWeight: BodyWeightEntry | undefined;
+  /** Short trend label, e.g. "Trend spadkowy". */
+  trendTitle: string;
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -24,10 +30,16 @@ interface ProgressSummaryProps {
 
 /**
  * Dashboard "Twoje postępy": body weight card + recent PRs card.
- * Only data that really exists on the device is shown; body-weight logging
- * is not implemented yet, so that card says so instead of showing a chart.
+ * Only data that really exists on the device is shown.
  */
-export function ProgressSummary({ overview, isLoading, error, onRetry }: ProgressSummaryProps) {
+export function ProgressSummary({
+  overview,
+  latestWeight,
+  trendTitle,
+  isLoading,
+  error,
+  onRetry,
+}: ProgressSummaryProps) {
   const { colors } = useTheme();
   const recent = overview.recentPrs;
 
@@ -40,18 +52,33 @@ export function ProgressSummary({ overview, isLoading, error, onRetry }: Progres
           <ErrorState message={error} actionLabel="Spróbuj ponownie" onActionPress={onRetry} />
         ) : null}
 
-        <AppCard>
+        <AppCard
+          onPress={() => router.push(latestWeight ? '/progress' : '/progress/weight-form')}
+          accessibilityLabel={
+            latestWeight
+              ? `Masa ciała ${formatBodyWeight(latestWeight.weightKg)}. ${trendTitle}`
+              : 'Masa ciała. Dodaj pierwszy pomiar'
+          }
+          accessibilityHint={latestWeight ? 'Otwiera zakładkę Postępy' : undefined}
+        >
           <View className="flex-row items-start gap-3">
             <View className="flex-1">
               <Text className="text-body text-text-secondary">Masa ciała</Text>
-              <Text className="mt-0.5 text-title text-text-muted">— kg</Text>
+              <Text
+                className={`mt-0.5 text-title ${latestWeight ? 'text-text-primary' : 'text-text-muted'}`}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {latestWeight ? formatBodyWeight(latestWeight.weightKg) : '— kg'}
+              </Text>
             </View>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-elevated">
-              <Icon name="scale" size="sm" color={colors.textMuted} />
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-accent/10">
+              <Icon name="scale" size="sm" color={colors.accent} />
             </View>
           </View>
           <Text className="mt-2 text-label text-text-secondary">
-            Zapisywanie pomiarów i wykres trendu pojawią się w kolejnej wersji.
+            {latestWeight
+              ? `${formatDisplayDate(latestWeight.date)} · ${trendTitle}`
+              : 'Dotknij, aby zapisać pierwszy pomiar masy ciała.'}
           </Text>
         </AppCard>
 

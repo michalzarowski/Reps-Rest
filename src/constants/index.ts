@@ -10,6 +10,7 @@ export const DEFAULT_BAR_WEIGHT_KG = 20;
 
 export const DEFAULT_SETTINGS: UserSettings = {
   heightCm: null,
+  bodyGoal: null,
   preferredUnit: 'kg',
   availablePlatesKg: [...DEFAULT_PLATES_KG],
   theme: 'system',

@@ -32,7 +32,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const stored = await getItem<UserSettings>(storageKeys.settings);
-      setSettings(stored ?? DEFAULT_SETTINGS);
+      // Merge so fields added in later versions (e.g. bodyGoal) get defaults.
+      setSettings(stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS);
     } catch (err) {
       const message =
         err instanceof StorageError

@@ -3,8 +3,9 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 
 import { IconButton, ScreenContainer, ScreenHeader } from '@/components';
-import { useRecords } from '@/context';
+import { useBodyWeight, useRecords, useSettings } from '@/context';
 import { buildRecordsOverview } from '@/utils';
+import { computeWeightTrend, describeWeightTrend } from '@/utils/bodyWeight';
 
 import { PlanCard } from './PlanCard';
 import { ProgressSummary } from './ProgressSummary';
@@ -32,6 +33,12 @@ function formatToday(date: Date): string {
 export function HomeScreen() {
   const { records, isLoading, error, reloadRecords } = useRecords();
   const overview = useMemo(() => buildRecordsOverview(records, 3), [records]);
+  const { entries: weightEntries } = useBodyWeight();
+  const { settings } = useSettings();
+  const trendTitle = useMemo(
+    () => describeWeightTrend(computeWeightTrend(weightEntries), settings.bodyGoal).title,
+    [weightEntries, settings.bodyGoal],
+  );
   const now = new Date();
 
   return (
@@ -54,6 +61,8 @@ export function HomeScreen() {
         <QuickTools />
         <ProgressSummary
           overview={overview}
+          latestWeight={weightEntries[0]}
+          trendTitle={trendTitle}
           isLoading={isLoading && records.length === 0}
           error={error}
           onRetry={() => void reloadRecords()}

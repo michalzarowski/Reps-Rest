@@ -19,6 +19,8 @@ import { useRecords } from '@/context';
 import { buildRecordsOverview } from '@/utils';
 import { formatDisplayDate, formatWeightReps } from '@/utils/records';
 
+import { BodyWeightSection } from './BodyWeightSection';
+
 export function ProgressScreen() {
   const { records, isLoading, error, reloadRecords } = useRecords();
   const overview = useMemo(() => buildRecordsOverview(records, 8), [records]);
@@ -27,6 +29,8 @@ export function ProgressScreen() {
   return (
     <ScreenContainer title="Postępy" subtitle="Podsumowanie danych zapisanych na tym urządzeniu.">
       <View className="gap-8">
+        <BodyWeightSection />
+
         {error ? (
           <ErrorState
             message={error}
@@ -89,15 +93,6 @@ export function ProgressScreen() {
               />
             </View>
           )}
-        </View>
-
-        <View>
-          <SectionHeader title="Masa ciała" />
-          <EmptyState
-            icon="scale"
-            title="Pomiary w przygotowaniu"
-            description="Zapisywanie masy ciała i wykres trendu pojawią się w kolejnej wersji aplikacji."
-          />
         </View>
       </View>
     </ScreenContainer>

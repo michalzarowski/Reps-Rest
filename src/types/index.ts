@@ -113,11 +113,56 @@ export interface AnnotatedPersonalRecord extends PersonalRecord {
   oneRmKind: 'actual' | 'estimated' | null;
 }
 
+/** Single body-weight measurement (one per calendar day). */
 export interface BodyWeightEntry {
   id: string;
+  /** Measurement date as YYYY-MM-DD. */
+  date: string;
+  weightKg: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BodyWeightDraft {
   date: string;
   weightKg: number;
 }
+
+/**
+ * Optional user goal. Used only to describe the observed weight trend —
+ * never to recommend a diet or a target weight.
+ */
+export type BodyGoal = 'cut' | 'maintain' | 'gain';
+
+/** BMI band relative to the WHO adult reference ranges (orientation only). */
+export type BmiBand = 'below' | 'reference' | 'above' | 'wellAbove';
+
+export interface BmiResult {
+  /** BMI rounded to one decimal place. */
+  value: number;
+  band: BmiBand;
+}
+
+export type WeightTrendDirection = 'down' | 'stable' | 'up';
+
+export type WeightTrend =
+  | {
+      status: 'insufficient';
+      /** Why no trend is shown (too few entries / too short span). */
+      reason: 'noData' | 'singleEntry' | 'shortSpan';
+    }
+  | {
+      status: 'ok';
+      direction: WeightTrendDirection;
+      /** Latest minus first weight within the window, kg. */
+      changeKg: number;
+      /** Average change per 7 days, kg. */
+      weeklyChangeKg: number;
+      /** Days between the first and last measurement in the window. */
+      spanDays: number;
+      fromDate: string;
+      toDate: string;
+    };
 
 export interface TimerPreset {
   id: string;
@@ -130,6 +175,8 @@ export interface TimerPreset {
 
 export interface UserSettings {
   heightCm: number | null;
+  /** Optional goal used only to describe the body-weight trend. */
+  bodyGoal: BodyGoal | null;
   preferredUnit: WeightUnit;
   availablePlatesKg: number[];
   theme: 'system' | 'light' | 'dark';

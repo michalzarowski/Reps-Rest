@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { BodyWeightProvider } from './BodyWeightContext';
 import { RecordsProvider } from './RecordsContext';
 import { SettingsProvider } from './SettingsContext';
 import { ThemeProvider } from './ThemeContext';
@@ -12,7 +13,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <SettingsProvider>
       <ThemeProvider>
-        <RecordsProvider>{children}</RecordsProvider>
+        <RecordsProvider>
+          <BodyWeightProvider>{children}</BodyWeightProvider>
+        </RecordsProvider>
       </ThemeProvider>
     </SettingsProvider>
   );
