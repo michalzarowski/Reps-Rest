@@ -14,7 +14,7 @@ Rep&Rest is a local-first React Native (Expo) training assistant. Prefer small, 
 - React Context API for shared state (no Redux/Zustand/Jotai)
 - AsyncStorage via `src/services/storage`
 - wger REST API via `src/services/api` (no secrets in the app)
-- Visual: Minimal Performance UI (tokens + NativeWind CSS variables, Lucide icons)
+- Visual: Minimal Performance UI layout + glassmorphism material (tokens + NativeWind CSS variables, `expo-blur`, `expo-linear-gradient`, `react-native-svg`, Lucide icons)
 
 Install native packages with `npx expo install`. Do not force-upgrade Expo SDK via `npm audit fix --force`.
 
@@ -26,7 +26,7 @@ Pin `lucide-react-native@0.577.0` (1.x breaks Metro resolution on SDK 54).
 |---|---|
 | `app/` | Routes and navigation only — thin screens that render feature modules |
 | `src/features/*` | Feature UI and upcoming domain logic per module |
-| `src/components/ui/` | Shared presentational / glass components |
+| `src/components/ui/` | Shared presentational components (`GlassSurface` is the card material) |
 | `src/services/api/` | HTTP client + wger stubs; no UI |
 | `src/services/storage/` | Only AsyncStorage access; JSON + `schemaVersion` |
 | `src/context/` | Narrow providers composed in `AppProviders` (Settings → Theme → Records) |
@@ -38,7 +38,7 @@ Pin `lucide-react-native@0.577.0` (1.x breaks Metro resolution on SDK 54).
 
 Import alias: `@/*` → `src/*`.
 
-## Visual system (Minimal Performance UI)
+## Visual system (Minimal Performance UI + glass)
 
 - Dark green surfaces with a single teal accent, plus a full light theme. Theme preference (`system` / `light` / `dark`) is persisted in `UserSettings.theme` and resolved by `ThemeProvider`.
 - Canonical colors live in `src/theme/tokens.ts` (`palettes.dark`, `palettes.light`). `tailwind.config.js` maps semantic class names to CSS variables (`rgb(var(--color-…))`) set by `ThemeProvider` — never hardcode hex values in feature code.
@@ -46,7 +46,10 @@ Import alias: `@/*` → `src/*`.
 - When a raw color is needed (SVG, `Switch`, navigation options, icons) read `useTheme().colors`.
 - Type scale: `text-display` (30), `text-title` (21), `text-card-title` (17), `text-body` (15), `text-label` (13). Spacing 4/8/12/16/24/32; screen gutter 20; card radius 18, button radius 14; touch targets ≥ 44 px.
 - `mint`, `lilac`, `lime` are data colors only (timer phases, plate sizes, badges). Accent is the one interactive color.
-- No decorative blur, glow, animated backgrounds or stock imagery. Motion supports function only (pressed opacity, native transitions).
+- Glass material: every card-like element uses `GlassSurface` (via `AppCard`, `Button` secondary, `IconButton` surface, `FormField`, `Stepper`, `SegmentedControl`, `EmptyState`). Layers: shadow/glow → 1 px gradient rim (bright top-left, accent bottom-right, imitates a cut edge) → backdrop blur (iOS/web; Android uses an opaque fill) → fill gradient → top sheen → diagonal streak. Values live in `glassPalettes` in `tokens.ts`.
+- `ScreenContainer` paints a static `AmbientBackground` (SVG radial lights) behind the panes. Do not animate it.
+- Glow (`glow` prop, `contentGlow()` for icons/rings) is reserved for the primary action, the selected state and one hero element per screen. Primary buttons use the accent gradient with a gloss highlight.
+- Press feedback = brighter sheen / stronger glow (`pressed`), no continuous animations. No stock imagery.
 - Icons: only via `@/components` `Icon` (Lucide whitelist, single stroke width).
 - Shared UI: `ScreenContainer`, `ScreenHeader`, `SectionHeader`, `AppCard`, `Button`, `IconButton`, `FormField`, `Stepper`, `SegmentedControl`, `ListRow`, `Badge`, `StatCard`, `EmptyState`, `LoadingState`, `ErrorState`, `confirmAction` / `showMessage`.
 - Never show demo values as user data. Features that are not implemented get an honest empty state, not an active-looking button.

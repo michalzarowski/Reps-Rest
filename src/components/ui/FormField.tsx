@@ -2,6 +2,9 @@ import { forwardRef, useState, type ReactNode } from 'react';
 import { Platform, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { useTheme } from '@/context';
+import { radii } from '@/theme';
+
+import { GlassSurface } from './GlassSurface';
 
 interface FormFieldProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -25,10 +28,12 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
   return (
     <View>
       <Text className="mb-1.5 text-label font-medium text-text-secondary">{label}</Text>
-      <View
-        className={`flex-row items-center rounded-sm border bg-surface px-3.5 ${
-          hasError ? 'border-danger' : focused ? 'border-accent' : 'border-border'
-        }`}
+      <GlassSurface
+        radius={radii.sm}
+        intensity="subtle"
+        glow={focused && !hasError}
+        className={hasError ? 'rounded-sm border border-danger' : undefined}
+        contentClassName="flex-row items-center px-3.5"
       >
         <TextInput
           ref={ref}
@@ -60,7 +65,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
           {...inputProps}
         />
         {trailing ? <View className="ml-2">{trailing}</View> : null}
-      </View>
+      </GlassSurface>
       {hasError ? (
         <Text accessibilityLiveRegion="polite" className="mt-1.5 text-label text-danger">
           {error}

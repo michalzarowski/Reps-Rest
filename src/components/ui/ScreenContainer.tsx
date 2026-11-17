@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { layout, spacing } from '@/theme';
 
+import { AmbientBackground } from './AmbientBackground';
 import { ScreenHeader } from './ScreenHeader';
 
 interface ScreenContainerProps {
@@ -29,7 +30,8 @@ interface ScreenContainerProps {
 }
 
 /**
- * Single screen wrapper used by every route.
+ * Single screen wrapper used by every route. Paints the static ambient light
+ * behind the glass panes (fixed while content scrolls over it).
  *
  * Insets are derived from the navigation tree instead of hard-coded offsets:
  * - top: safe-area inset only when no native header is shown above the screen;
@@ -70,28 +72,34 @@ export function ScreenContainer({
         contentStyle,
       ]}
     >
-      {title ? (
-        <ScreenHeader title={title} subtitle={subtitle} right={headerRight} />
-      ) : null}
+      {title ? <ScreenHeader title={title} subtitle={subtitle} right={headerRight} /> : null}
       {children}
     </View>
   );
 
   if (!scroll) {
-    return <View className="flex-1 bg-background">{inner}</View>;
+    return (
+      <View className="flex-1 bg-background">
+        <AmbientBackground />
+        {inner}
+      </View>
+    );
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerStyle={{ flexGrow: 1 }}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-      automaticallyAdjustKeyboardInsets
-      showsVerticalScrollIndicator={false}
-      refreshControl={refreshControl}
-    >
-      {inner}
-    </ScrollView>
+    <View className="flex-1 bg-background">
+      <AmbientBackground />
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
+      >
+        {inner}
+      </ScrollView>
+    </View>
   );
 }

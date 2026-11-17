@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useTheme } from '@/context';
 
 import { Button } from './Button';
+import { GlassSurface } from './GlassSurface';
 import { Icon, type IconName } from './Icon';
 
 interface EmptyStateProps {
@@ -24,12 +25,8 @@ export function EmptyState({
   variant = 'card',
 }: EmptyStateProps) {
   const { colors } = useTheme();
-  return (
-    <View
-      className={`items-start gap-3 ${
-        variant === 'card' ? 'rounded-lg border border-dashed border-border p-5' : ''
-      }`}
-    >
+  const body = (
+    <View className={`items-start gap-3 ${variant === 'card' ? 'p-5' : ''}`}>
       {icon ? (
         <View className="h-11 w-11 items-center justify-center rounded-full bg-accent/10">
           <Icon name={icon} color={colors.accent} />
@@ -52,4 +49,5 @@ export function EmptyState({
       ) : null}
     </View>
   );
+  return variant === 'card' ? <GlassSurface intensity="subtle">{body}</GlassSurface> : body;
 }

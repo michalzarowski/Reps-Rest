@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import { contentGlow } from '@/components';
 import { useTheme } from '@/context';
 import type { ColorPalette } from '@/theme';
 import type { TimerPhase } from '@/types/timer';
@@ -53,7 +54,13 @@ export function ProgressRing({
       accessible
       accessibilityRole="timer"
       accessibilityLabel={`${label}. Pozostało ${timeLabel}. ${subtitle ?? ''}`}
-      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...(phase === 'idle' ? null : contentGlow(accent, 18, 0.55)),
+      }}
     >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Circle

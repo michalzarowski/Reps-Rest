@@ -11,10 +11,12 @@ import { useColorScheme, View } from 'react-native';
 
 import {
   createNavigationTheme,
+  glassPalettes,
   palettes,
   themeVars,
   type ColorPalette,
   type ColorSchemeName,
+  type GlassPalette,
 } from '@/theme';
 import type { UserSettings } from '@/types';
 
@@ -26,6 +28,7 @@ interface ThemeContextValue {
   /** Resolved scheme after applying the user preference. */
   scheme: ColorSchemeName;
   colors: ColorPalette;
+  glass: GlassPalette;
   preference: ThemePreference;
   setPreference: (next: ThemePreference) => Promise<void>;
 }
@@ -55,7 +58,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ scheme, colors: palettes[scheme], preference, setPreference }),
+    () => ({
+      scheme,
+      colors: palettes[scheme],
+      glass: glassPalettes[scheme],
+      preference,
+      setPreference,
+    }),
     [scheme, preference, setPreference],
   );
 

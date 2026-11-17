@@ -1,9 +1,10 @@
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { useMemo } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassTabBarBackground } from '@/components';
 import { useTheme } from '@/context';
 import { typography } from '@/theme';
 
@@ -47,14 +48,14 @@ export function useTabScreenOptions(): BottomTabNavigationOptions {
       tabBarHideOnKeyboard: Platform.OS === 'android',
       tabBarStyle: {
         backgroundColor: colors.background,
-        borderTopColor: colors.border,
-        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopWidth: 0,
         // A custom height replaces the default, so the home-indicator inset is
         // added back explicitly (React Navigation pads the bottom by it).
         height: TAB_BAR_CONTENT_HEIGHT + bottom,
         elevation: 0,
         shadowOpacity: 0,
       },
+      tabBarBackground: GlassTabBarBackground,
       tabBarLabelStyle: {
         fontSize: 11,
         lineHeight: 14,

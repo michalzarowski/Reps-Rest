@@ -15,3 +15,7 @@ export { SegmentedControl } from './SegmentedControl';
 export { StatCard } from './StatCard';
 export { Stepper } from './Stepper';
 export { confirmAction, showMessage } from './dialogs';
+export { AmbientBackground } from './AmbientBackground';
+export { GlassSurface, type GlassIntensity } from './GlassSurface';
+export { GlassTabBarBackground } from './GlassTabBarBackground';
+export { contentGlow } from './glow';

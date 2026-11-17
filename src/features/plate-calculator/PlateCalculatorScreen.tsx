@@ -295,7 +295,7 @@ function FromPlatesResultBlock({ result }: { result: ReturnType<typeof solvePlat
 
 function ResultCard({ label, totalKg, detail }: { label: string; totalKg: number; detail: string }) {
   return (
-    <AppCard variant="elevated">
+    <AppCard variant="elevated" glow>
       <Text className="text-label font-semibold text-accent">{label}</Text>
       <Text
         accessibilityLiveRegion="polite"

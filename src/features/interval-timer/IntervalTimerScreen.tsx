@@ -6,6 +6,7 @@ import {
   Button,
   ErrorState,
   FormField,
+  GlassSurface,
   IconButton,
   ScreenContainer,
   SectionHeader,
@@ -43,16 +44,12 @@ const DEFAULT_CONFIG: TimerConfig = presetToConfig(BUILTIN_TIMER_PRESETS[0]!);
 export function IntervalTimerScreen() {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
-  const [presets, setPresets] = useState<TimerPreset[]>([
-    ...BUILTIN_TIMER_PRESETS,
-  ]);
+  const [presets, setPresets] = useState<TimerPreset[]>([...BUILTIN_TIMER_PRESETS]);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
     BUILTIN_TIMER_PRESETS[0]!.id,
   );
   const [draft, setDraft] = useState<TimerConfig>(DEFAULT_CONFIG);
-  const [warmupEnabled, setWarmupEnabled] = useState(
-    DEFAULT_CONFIG.warmupSeconds > 0,
-  );
+  const [warmupEnabled, setWarmupEnabled] = useState(DEFAULT_CONFIG.warmupSeconds > 0);
   const [cuesEnabled, setCuesEnabled] = useState(true);
   const [countdownCues, setCountdownCues] = useState(true);
   const [presetName, setPresetName] = useState('');
@@ -69,14 +66,15 @@ export function IntervalTimerScreen() {
     return () => clearTimeout(id);
   }, [presetNotice]);
 
-  const { snapshot, start, pause, resume, reset, restart, setConfig } =
-    useIntervalTimer(DEFAULT_CONFIG, {
+  const { snapshot, start, pause, resume, reset, restart, setConfig } = useIntervalTimer(
+    DEFAULT_CONFIG,
+    {
       cuesEnabled,
       countdownCuesEnabled: countdownCues,
-    });
+    },
+  );
 
-  const isActive =
-    snapshot.status === 'running' || snapshot.status === 'paused';
+  const isActive = snapshot.status === 'running' || snapshot.status === 'paused';
   const isCompleted = snapshot.status === 'completed';
 
   const configValidation = useMemo(
@@ -232,11 +230,16 @@ export function IntervalTimerScreen() {
   if (isCompleted) {
     return (
       <ScreenContainer>
-        <AppCard variant="elevated" className="mb-6 items-center">
+        <AppCard variant="elevated" glow className="mb-6" contentClassName="items-center">
           <Text className="text-label font-semibold text-success">Trening zakończony</Text>
           <Text
             className="mt-1 text-text-primary"
-            style={{ fontSize: 44, lineHeight: 52, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+            style={{
+              fontSize: 44,
+              lineHeight: 52,
+              fontWeight: '700',
+              fontVariant: ['tabular-nums'],
+            }}
           >
             {snapshot.completedRounds}/{snapshot.totalRounds}
           </Text>
@@ -249,7 +252,11 @@ export function IntervalTimerScreen() {
           {snapshot.plannedWarmupMs > 0 ? (
             <SummaryRow label="Przygotowanie" value={formatTimerMmSs(snapshot.plannedWarmupMs)} />
           ) : null}
-          <SummaryRow label="Łączny czas sesji" value={formatTimerMmSs(snapshot.totalSessionMs)} last />
+          <SummaryRow
+            label="Łączny czas sesji"
+            value={formatTimerMmSs(snapshot.totalSessionMs)}
+            last
+          />
         </AppCard>
         <Text className="mb-6 text-label text-text-muted">
           Czasy powyżej to plan treningu, a nie pomiar faktycznie wykonanej pracy.
@@ -282,7 +289,8 @@ export function IntervalTimerScreen() {
           />
           {snapshot.nextPhaseLabel ? (
             <Text className="mt-4 text-body text-text-secondary">
-              Dalej: <Text className="font-semibold text-text-primary">{snapshot.nextPhaseLabel}</Text>
+              Dalej:{' '}
+              <Text className="font-semibold text-text-primary">{snapshot.nextPhaseLabel}</Text>
             </Text>
           ) : null}
         </View>
@@ -333,7 +341,7 @@ export function IntervalTimerScreen() {
   return (
     <ScreenContainer>
       {/* Summary + start first: the main action is reachable without scrolling. */}
-      <AppCard variant="elevated" className="mb-8">
+      <AppCard variant="elevated" glow className="mb-8">
         <Text className="text-label text-text-secondary">Sesja</Text>
         <Text className="mt-0.5 text-card-title text-text-primary">
           {draft.rounds} × {draft.workSeconds} s pracy / {draft.restSeconds} s przerwy
@@ -348,12 +356,7 @@ export function IntervalTimerScreen() {
           </View>
         ) : null}
         <View className="mt-4">
-          <Button
-            label="Start"
-            icon="play"
-            onPress={handleStart}
-            disabled={!configValidation.ok}
-          />
+          <Button label="Start" icon="play" onPress={handleStart} disabled={!configValidation.ok} />
         </View>
       </AppCard>
 
@@ -382,19 +385,26 @@ export function IntervalTimerScreen() {
                   onLongPress={() => {
                     if (!builtin) beginEditPreset(preset);
                   }}
-                  className={`min-h-[64px] rounded-md border p-3 ${
-                    active ? 'border-accent bg-accent/10' : 'border-border bg-surface active:bg-surface-elevated'
-                  }`}
                 >
-                  <Text
-                    numberOfLines={1}
-                    className={`text-body font-semibold ${active ? 'text-accent' : 'text-text-primary'}`}
-                  >
-                    {preset.name}
-                  </Text>
-                  <Text className="mt-0.5 text-label text-text-secondary">
-                    {preset.workSeconds}/{preset.restSeconds} s · {preset.rounds} r.
-                  </Text>
+                  {({ pressed }) => (
+                    <GlassSurface
+                      radius={14}
+                      intensity="subtle"
+                      glow={active}
+                      pressed={pressed}
+                      contentClassName="min-h-[64px] p-3"
+                    >
+                      <Text
+                        numberOfLines={1}
+                        className={`text-body font-semibold ${active ? 'text-accent' : 'text-text-primary'}`}
+                      >
+                        {preset.name}
+                      </Text>
+                      <Text className="mt-0.5 text-label text-text-secondary">
+                        {preset.workSeconds}/{preset.restSeconds} s · {preset.rounds} r.
+                      </Text>
+                    </GlassSurface>
+                  )}
                 </Pressable>
                 {!builtin ? (
                   <View className="mt-1 flex-row justify-end gap-1">
@@ -533,7 +543,15 @@ export function IntervalTimerScreen() {
   );
 }
 
-function SummaryRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+function SummaryRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
   return (
     <View
       className={`min-h-[52px] flex-row items-center justify-between px-4 py-3 ${
@@ -541,7 +559,10 @@ function SummaryRow({ label, value, last = false }: { label: string; value: stri
       }`}
     >
       <Text className="text-body text-text-secondary">{label}</Text>
-      <Text className="text-body font-semibold text-text-primary" style={{ fontVariant: ['tabular-nums'] }}>
+      <Text
+        className="text-body font-semibold text-text-primary"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
         {value}
       </Text>
     </View>

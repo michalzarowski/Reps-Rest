@@ -129,7 +129,7 @@ export function OneRmScreen() {
             details={validation.errors.slice(1)}
           />
         ) : (
-          <AppCard variant="elevated">
+          <AppCard variant="elevated" glow>
             <Text className="text-label font-semibold text-accent">Szacowane 1RM</Text>
             <Text
               accessibilityLiveRegion="polite"

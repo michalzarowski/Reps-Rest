@@ -1,8 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components';
+import { Button, contentGlow, GlassSurface, Icon } from '@/components';
 import { useTheme } from '@/context';
 import type { WorkoutPlan } from '@/types';
 
@@ -22,24 +21,18 @@ function exerciseCountLabel(count: number): string {
 }
 
 /**
- * Horizontal plan card: eyebrow, title, meta, one CTA. A soft accent wash and a
- * large outline icon on the right replace a photo (no stock imagery in assets).
+ * Horizontal glass hero card: eyebrow, title, meta, one CTA. A glowing outline
+ * icon on the right replaces a photo (no training imagery in assets).
  */
 export function PlanCard({ plan }: PlanCardProps) {
-  const { colors } = useTheme();
+  const { colors, glass } = useTheme();
 
   return (
-    <View className="overflow-hidden rounded-lg border border-border bg-surface">
-      <LinearGradient
-        pointerEvents="none"
-        colors={['transparent', colors.accentSoft]}
-        start={{ x: 0.35, y: 0.2 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <GlassSurface intensity="strong" glow>
       <View
         pointerEvents="none"
-        className="absolute -right-3 top-1/2 -mt-12 opacity-20"
+        className="absolute -right-3 top-1/2 -mt-12 opacity-30"
+        style={contentGlow(glass.glow, 16, 1)}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
@@ -80,6 +73,6 @@ export function PlanCard({ plan }: PlanCardProps) {
           />
         </View>
       </View>
-    </View>
+    </GlassSurface>
   );
 }

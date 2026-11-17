@@ -1,23 +1,32 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type PressableProps, type ViewProps } from 'react-native';
+import { Pressable, type PressableProps } from 'react-native';
+
+import { radii } from '@/theme';
+
+import { GlassSurface, type GlassIntensity } from './GlassSurface';
 
 type CardVariant = 'default' | 'elevated' | 'outline';
 type CardPadding = 'none' | 'sm' | 'md';
 
-interface AppCardProps extends Omit<ViewProps, 'children'> {
+interface AppCardProps {
   children: ReactNode;
   variant?: CardVariant;
   padding?: CardPadding;
+  /** Accent rim and glow — reserve for one hero element per screen. */
+  glow?: boolean;
   onPress?: PressableProps['onPress'];
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** Outer spacing (margins). */
   className?: string;
+  /** Inner layout (alignment) — padding comes from `padding`. */
+  contentClassName?: string;
 }
 
-const variantClass: Record<CardVariant, string> = {
-  default: 'bg-surface border border-border',
-  elevated: 'bg-surface-elevated border border-border',
-  outline: 'border border-border',
+const intensityFor: Record<CardVariant, GlassIntensity> = {
+  default: 'regular',
+  elevated: 'strong',
+  outline: 'subtle',
 };
 
 const paddingClass: Record<CardPadding, string> = {
@@ -26,24 +35,31 @@ const paddingClass: Record<CardPadding, string> = {
   md: 'p-4',
 };
 
-/** The one card surface in the app. Pressable when `onPress` is given. */
+/** The one card surface in the app (glass material). Pressable when `onPress` is given. */
 export function AppCard({
   children,
   variant = 'default',
   padding = 'md',
+  glow = false,
   onPress,
   accessibilityLabel,
   accessibilityHint,
   className,
-  ...rest
+  contentClassName,
 }: AppCardProps) {
-  const base = `rounded-lg ${variantClass[variant]} ${paddingClass[padding]} ${className ?? ''}`;
+  const inner = `${paddingClass[padding]} ${contentClassName ?? ''}`;
 
   if (!onPress) {
     return (
-      <View className={base} {...rest}>
+      <GlassSurface
+        radius={radii.lg}
+        intensity={intensityFor[variant]}
+        glow={glow}
+        className={className}
+        contentClassName={inner}
+      >
         {children}
-      </View>
+      </GlassSurface>
     );
   }
 
@@ -53,10 +69,19 @@ export function AppCard({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       onPress={onPress}
-      className={`${base} active:opacity-80`}
-      {...rest}
+      className={className}
     >
-      {children}
+      {({ pressed }) => (
+        <GlassSurface
+          radius={radii.lg}
+          intensity={intensityFor[variant]}
+          glow={glow}
+          pressed={pressed}
+          contentClassName={inner}
+        >
+          {children}
+        </GlassSurface>
+      )}
     </Pressable>
   );
 }

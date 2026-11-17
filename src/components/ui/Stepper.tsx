@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 
+import { GlassSurface } from './GlassSurface';
 import { IconButton } from './IconButton';
 
 interface StepperProps {
@@ -21,10 +22,7 @@ export function Stepper({
   decrementDisabled,
 }: StepperProps) {
   return (
-    <View
-      className="flex-row items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5"
-      accessible={false}
-    >
+    <GlassSurface intensity="subtle" contentClassName="flex-row items-center gap-3 px-3 py-2.5">
       <View className="flex-1">
         <Text className="text-label text-text-secondary">{label}</Text>
         <Text
@@ -47,6 +45,6 @@ export function Stepper({
         accessibilityLabel={`Zwiększ: ${label}`}
         onPress={onIncrement}
       />
-    </View>
+    </GlassSurface>
   );
 }

@@ -1,7 +1,9 @@
-import { Pressable, type PressableProps } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
 
 import { useTheme } from '@/context';
 
+import { GlassSurface } from './GlassSurface';
 import { Icon, type IconName } from './Icon';
 
 type IconButtonVariant = 'surface' | 'accent' | 'plain' | 'danger';
@@ -14,13 +16,6 @@ interface IconButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   size?: 44 | 48 | 64 | 72;
 }
 
-const variantClass: Record<IconButtonVariant, string> = {
-  surface: 'bg-surface-elevated border border-border',
-  accent: 'bg-accent',
-  plain: 'bg-transparent',
-  danger: 'border border-danger/40',
-};
-
 export function IconButton({
   icon,
   accessibilityLabel,
@@ -29,7 +24,7 @@ export function IconButton({
   disabled,
   ...rest
 }: IconButtonProps) {
-  const { colors } = useTheme();
+  const { colors, glass } = useTheme();
   const color =
     variant === 'accent'
       ? colors.onAccent
@@ -38,6 +33,8 @@ export function IconButton({
         : variant === 'plain'
           ? colors.textSecondary
           : colors.accent;
+  const iconNode = <Icon name={icon} size={size >= 64 ? 'lg' : 'md'} color={color} />;
+  const radius = size / 2;
 
   return (
     <Pressable
@@ -46,13 +43,77 @@ export function IconButton({
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       hitSlop={size < 48 ? 4 : 0}
-      className={`items-center justify-center rounded-full active:opacity-70 ${variantClass[variant]} ${
-        disabled ? 'opacity-40' : ''
-      }`}
-      style={{ width: size, height: size }}
+      className={disabled ? 'opacity-40' : ''}
       {...rest}
     >
-      <Icon name={icon} size={size >= 64 ? 'lg' : 'md'} color={color} />
+      {({ pressed }) => {
+        if (variant === 'accent') {
+          return (
+            <View
+              style={{
+                width: size,
+                height: size,
+                borderRadius: radius,
+                shadowColor: glass.glow,
+                shadowOpacity: pressed ? 0.8 : 0.55,
+                shadowRadius: pressed ? 26 : 18,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 8,
+              }}
+            >
+              <LinearGradient
+                colors={[colors.accentHighlight, colors.accent]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: size,
+                  height: size,
+                  borderRadius: radius,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 0.6 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                {iconNode}
+              </LinearGradient>
+            </View>
+          );
+        }
+        if (variant === 'surface') {
+          return (
+            <GlassSurface
+              radius={radius}
+              intensity="subtle"
+              pressed={pressed}
+              contentStyle={{ width: size - 2, height: size - 2, alignItems: 'center', justifyContent: 'center' }}
+            >
+              {iconNode}
+            </GlassSurface>
+          );
+        }
+        return (
+          <View
+            className={variant === 'danger' ? 'border border-danger/40' : ''}
+            style={{
+              width: size,
+              height: size,
+              borderRadius: radius,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            }}
+          >
+            {iconNode}
+          </View>
+        );
+      }}
     </Pressable>
   );
 }

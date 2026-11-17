@@ -36,6 +36,34 @@ export interface ColorPalette {
   lime: string;
   /** Dark scrim for text over images. */
   overlay: string;
+  /** Lighter end of the accent gradient (buttons, active states). */
+  accentHighlight: string;
+}
+
+/**
+ * Glass material — layered on top of the palette by `GlassSurface`.
+ * Edges imitate a cut glass bevel: bright top-left, dark middle, accent rim
+ * bottom-right. `sheen` / `streak` are the reflections inside the pane.
+ */
+export interface GlassPalette {
+  fillTop: string;
+  fillBottom: string;
+  /** Opaque fallback fill where backdrop blur is unavailable (Android). */
+  fillTopSolid: string;
+  fillBottomSolid: string;
+  edgeHighlight: string;
+  edgeMid: string;
+  edgeShadow: string;
+  edgeAccent: string;
+  sheen: string;
+  sheenPressed: string;
+  streak: string;
+  shadow: string;
+  shadowOpacity: number;
+  glow: string;
+  blurTint: 'dark' | 'light';
+  /** Ambient background light sources. */
+  ambient: [string, string, string];
 }
 
 export type ColorSchemeName = 'dark' | 'light';
@@ -60,9 +88,10 @@ export const palettes: Record<ColorSchemeName, ColorPalette> = {
     lilac: '#A99BF0',
     lime: '#C8F06A',
     overlay: 'rgba(7, 19, 16, 0.72)',
+    accentHighlight: '#8AF3EC',
   },
   light: {
-    background: '#F3F7F5',
+    background: '#ECF4F1',
     surface: '#FFFFFF',
     surfaceElevated: '#E9F1EE',
     border: '#D4E2DD',
@@ -80,6 +109,46 @@ export const palettes: Record<ColorSchemeName, ColorPalette> = {
     lilac: '#6B5BD6',
     lime: '#6E8F12',
     overlay: 'rgba(7, 19, 16, 0.62)',
+    accentHighlight: '#19A79E',
+  },
+};
+
+export const glassPalettes: Record<ColorSchemeName, GlassPalette> = {
+  dark: {
+    fillTop: 'rgba(36, 72, 66, 0.42)',
+    fillBottom: 'rgba(9, 24, 21, 0.50)',
+    fillTopSolid: 'rgba(28, 56, 51, 0.96)',
+    fillBottomSolid: 'rgba(12, 30, 27, 0.96)',
+    edgeHighlight: 'rgba(255, 255, 255, 0.42)',
+    edgeMid: 'rgba(255, 255, 255, 0.07)',
+    edgeShadow: 'rgba(61, 217, 208, 0.04)',
+    edgeAccent: 'rgba(61, 217, 208, 0.55)',
+    sheen: 'rgba(255, 255, 255, 0.10)',
+    sheenPressed: 'rgba(255, 255, 255, 0.20)',
+    streak: 'rgba(255, 255, 255, 0.06)',
+    shadow: '#000000',
+    shadowOpacity: 0.4,
+    glow: '#3DD9D0',
+    blurTint: 'dark',
+    ambient: ['rgba(61, 217, 208, 0.30)', 'rgba(30, 120, 100, 0.34)', 'rgba(126, 224, 184, 0.14)'],
+  },
+  light: {
+    fillTop: 'rgba(255, 255, 255, 0.78)',
+    fillBottom: 'rgba(255, 255, 255, 0.46)',
+    fillTopSolid: 'rgba(255, 255, 255, 0.97)',
+    fillBottomSolid: 'rgba(244, 250, 248, 0.97)',
+    edgeHighlight: 'rgba(255, 255, 255, 1)',
+    edgeMid: 'rgba(255, 255, 255, 0.45)',
+    edgeShadow: 'rgba(11, 127, 121, 0.10)',
+    edgeAccent: 'rgba(11, 127, 121, 0.38)',
+    sheen: 'rgba(255, 255, 255, 0.65)',
+    sheenPressed: 'rgba(255, 255, 255, 0.95)',
+    streak: 'rgba(255, 255, 255, 0.40)',
+    shadow: '#0B3B36',
+    shadowOpacity: 0.12,
+    glow: '#0B7F79',
+    blurTint: 'light',
+    ambient: ['rgba(61, 217, 208, 0.30)', 'rgba(11, 127, 121, 0.16)', 'rgba(126, 224, 184, 0.26)'],
   },
 };
 
